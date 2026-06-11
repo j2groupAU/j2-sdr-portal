@@ -576,12 +576,12 @@ tr:hover td { background: #faf8f4; }
 <!-- PAYSLIP DISPUTE MODAL -->
 <div class="modal-overlay" id="ps-dispute-modal">
   <div class="modal">
-    <div class="modal-title">Dispute Payslip</div>
+    <div class="modal-title">Request Review Payslip</div>
     <div class="modal-sub" id="ps-dispute-sub">—</div>
     <div id="alert-ps-dispute" class="alert"></div>
-    <div class="field-group"><label>Reason for Dispute</label><textarea id="ps-dispute-text" rows="4" placeholder="Describe the issue with this payslip…"></textarea></div>
+    <div class="field-group"><label>Reason for Request Review</label><textarea id="ps-dispute-text" rows="4" placeholder="Describe the issue with this payslip…"></textarea></div>
     <div class="modal-actions">
-      <button class="btn btn-primary" onclick="submitPayslipDispute()" id="btn-ps-dispute">Submit Dispute</button>
+      <button class="btn btn-primary" onclick="submitPayslipDispute()" id="btn-ps-dispute">Submit Request Review</button>
       <button class="btn btn-secondary" onclick="closePsDisputeModal()">Cancel</button>
     </div>
   </div>
@@ -735,7 +735,7 @@ async function loadNotifications() {
     allTimesheets.forEach(t => {
       if (t.status==="Approved") notifs.push({type:"success", text:"✓ Timesheet approved: "+t.cutoffLabel, id:t.id});
       if (t.status==="Rejected") notifs.push({type:"red", text:"✗ Timesheet rejected: "+t.cutoffLabel+(t.adminNote?" — "+t.adminNote:""), id:t.id});
-      if (t.status==="Disputed") notifs.push({type:"warning", text:"⚠️ Dispute under review: "+t.cutoffLabel, id:t.id});
+      if (t.status==="Disputed") notifs.push({type:"warning", text:"⚠️ Request Review under review: "+t.cutoffLabel, id:t.id});
     });
     // Leave notifications
     allLeaves.forEach(l => {
@@ -814,7 +814,7 @@ function showClockedIn(t, lunchData) {
   document.getElementById("clock-in-time-display").textContent=t;
   document.getElementById("quick-meeting-card").style.display="block";
   // Restore lunch state if already taken today
-  if(lunchData && lunchData.lunchTaken==="TRUE") {
+  if(lunchData && (lunchData.lunchTaken==="TRUE"||lunchData.lunchTaken===true||lunchData.lunchTaken==="true")) {
     lunchTaken=true;
     document.getElementById("lunch-not-started").style.display="none";
     document.getElementById("lunch-in-progress").style.display="none";
@@ -975,19 +975,19 @@ function renderTimesheetGrouped() {
       </div>
       <div class="cutoff-group-body">
         <div class="table-wrap"><table>
-          <thead><tr><th>Date</th><th>Type</th><th>Clock In</th><th>Clock Out</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Dispute</th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Clock In</th><th>Clock Out</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Request Review</th></tr></thead>
           <tbody>${(()=>{const shownMeetingDates=new Set();return entries.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
             const actualStr=e.actualStart?(e.actualStart+(e.actualEnd?" → "+e.actualEnd:"")):'<span style="color:var(--muted)">Pending</span>';
-            const canEntryDispute=!["Submitted","Approved"].includes(tsStatus)&&e.actualStart&&!["Submitted","Under Review"].includes(e.disputeStatus);
+            const canEntryDispute=!["Under Review","Approved"].includes(tsStatus)&&e.actualStart&&!["Under Review","Under Review"].includes(e.disputeStatus);
             const disputeCell=canEntryDispute
-              ?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Dispute</button>`
+              ?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Request Review</button>`
               :getDisputeBadge(e.disputeStatus);
-            const lunchStr=e.lunchTaken==="TRUE"
+            const lunchStr=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")
               ?`<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
               :'<span style="color:var(--muted);font-size:11px;">None</span>';
             // Get meetings for this specific date
             const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
-            const lunchAdd = e.lunchTaken==="TRUE" ? 1 : 0;
+            const lunchAdd = (e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true") ? 1 : 0;
             const displayBillable = parseFloat(e.billableHrs||0);
             const billableDisplay = displayBillable>0
               ? `<strong>${displayBillable.toFixed(2)} hrs</strong>${lunchAdd>0?'<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>':""}`
@@ -1025,9 +1025,9 @@ function renderTimesheetGrouped() {
     // Cutoff-level dispute (after timesheet submitted)
     if(ts && ["Pending","Rejected","Disputed"].includes(ts.status)) {
       html+=`<div style="padding:16px;border-top:1.5px solid var(--border);background:#fffbf5;">
-        <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:8px;">⚠️ Dispute this Cutoff Timesheet</div>
+        <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:8px;">⚠️ Request Review this Cutoff Timesheet</div>
         <div class="field-group" style="margin-bottom:8px;"><textarea id="cutoff-dispute-${ts.id}" rows="2" placeholder="Describe the issue with this cutoff…" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;font-family:inherit;"></textarea></div>
-        <button class="btn btn-danger btn-sm" onclick="submitCutoffDisputeFromTs('${ts.id}')">Submit Dispute</button>
+        <button class="btn btn-danger btn-sm" onclick="submitCutoffDisputeFromTs('${ts.id}')">Submit Request Review</button>
       </div>`;
     }
     html+=`</div></div>`;
@@ -1038,7 +1038,7 @@ function renderTimesheetGrouped() {
 function getTsBadge(status) {
   if(status==="Approved") return '<span class="badge badge-green">✓ Approved</span>';
   if(status==="Rejected") return '<span class="badge badge-red">✗ Rejected</span>';
-  if(status==="Disputed") return '<span class="badge badge-amber">⚠️ Disputed</span>';
+  if(status==="Disputed") return '<span class="badge badge-amber">⚠️ Request Reviewd</span>';
   if(status==="Pending") return '<span class="badge badge-blue">⏳ Pending</span>';
   return '<span class="badge badge-gray">Not submitted</span>';
 }
@@ -1053,18 +1053,18 @@ async function submitCutoffDisputeFromTs(tsId) {
   } catch(e){showAlert(document.getElementById("alert-timesheet"),"error","Could not submit: "+e.message);}
 }
 
-// ── ENTRY DISPUTE MODAL ──
+// ── REVIEW REQUEST MODAL ──
 let disputeItemId=null;
 function openDisputeModal(itemId,date){
   disputeItemId=itemId;
   const html=`<div class="modal-overlay open" id="entry-dispute-modal" onclick="if(event.target===this)closeEntryDisputeModal()">
     <div class="modal">
-      <div class="modal-title">Dispute Entry</div>
+      <div class="modal-title">Request Review Entry</div>
       <div class="modal-sub">Entry: ${formatDate(date)}</div>
       <div id="alert-entry-dispute" class="alert"></div>
       <div class="field-group"><label>Reason</label><textarea id="entry-dispute-text" rows="4" placeholder="Describe why this entry needs correction…"></textarea></div>
       <div class="modal-actions">
-        <button class="btn btn-primary" onclick="submitEntryDispute()">Submit Dispute</button>
+        <button class="btn btn-primary" onclick="submitEntryDispute()">Submit Request Review</button>
         <button class="btn btn-secondary" onclick="closeEntryDisputeModal()">Cancel</button>
       </div>
     </div>
@@ -1076,7 +1076,7 @@ async function submitEntryDispute(){
   const notes=document.getElementById("entry-dispute-text").value.trim();
   if(!notes){showAlert(document.getElementById("alert-entry-dispute"),"error","Please describe your reason.");return;}
   try {
-    await apiPost({action:"updateEntry",id:disputeItemId,disputeStatus:"Submitted",disputeNotes:notes});
+    await apiPost({action:"updateEntry",id:disputeItemId,disputeStatus:"Under Review",disputeNotes:notes});
     showAlert(document.getElementById("alert-entry-dispute"),"success","✓ Dispute submitted.");
     allEntries=[]; setTimeout(()=>{closeEntryDisputeModal();loadTimesheet();},1500);
   } catch(e){showAlert(document.getElementById("alert-entry-dispute"),"error","Could not submit: "+e.message);}
@@ -1189,7 +1189,7 @@ function renderPayslips(timesheets) {
       <div style="margin-top:14px;padding:10px;background:var(--off-white);border-radius:7px;font-size:11px;color:var(--muted);text-align:center;">This payslip is auto-generated based on approved timesheet data. Contact your J2 admin for queries.</div>
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
         <button class="btn btn-primary btn-sm" onclick="downloadPayslipPdf('${ts.id}','${ts.cutoffLabel||ts.cutoffKey}')">⬇ Download PDF</button>
-        <button class="btn btn-danger btn-sm" onclick="openPsDisputeModal('${ts.id}','${ts.cutoffLabel||ts.cutoffKey}')">⚠️ Dispute</button>
+        <button class="btn btn-danger btn-sm" onclick="openPsDisputeModal('${ts.id}','${ts.cutoffLabel||ts.cutoffKey}')">⚠️ Request Review</button>
       </div>
     </div>`;
   }).join("");
@@ -1246,7 +1246,7 @@ async function submitPayslipDispute(){
     showAlert(alert,"success","✓ Dispute submitted. Admin will review.");
     allTimesheets=[]; setTimeout(()=>{closePsDisputeModal();loadPayslip();},1500);
   } catch(e){showAlert(alert,"error","Could not submit: "+e.message);}
-  btn.innerHTML="Submit Dispute"; btn.disabled=false;
+  btn.innerHTML="Submit Review Request"; btn.disabled=false;
 }
 document.getElementById("ps-dispute-modal").addEventListener("click",function(e){if(e.target===this)closePsDisputeModal();});
 
@@ -1353,9 +1353,9 @@ function renderSubmitPage(){
     statusHtml=`<div style="background:${style};border:1.5px solid;padding:14px 18px;border-radius:10px;margin-bottom:16px;font-size:14px;font-weight:700;">${msg}</div>`;
     if(["Pending","Rejected"].includes(existing.status)){
       statusHtml+=`<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:16px;margin-bottom:16px;">
-        <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:8px;">⚠️ Dispute this Timesheet</div>
+        <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:8px;">⚠️ Request Review this Timesheet</div>
         <div class="field-group" style="margin-bottom:8px;"><textarea id="ts-cutoff-dispute-text" rows="2" placeholder="Describe the issue…" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;font-family:inherit;"></textarea></div>
-        <button class="btn btn-danger btn-sm" onclick="submitCutoffDisputeSubmit('${existing.id}')">Submit Dispute</button>
+        <button class="btn btn-danger btn-sm" onclick="submitCutoffDisputeSubmit('${existing.id}')">Submit Request Review</button>
       </div>`;
     }
   }
@@ -1547,7 +1547,7 @@ function getPayDateFromCutoffLabel(label){
 
 function getDisputeBadge(s){
   if(!s||s==="None"||s==="") return '<span class="badge badge-gray">—</span>';
-  if(s==="Submitted") return '<span class="badge badge-amber">⏳ Submitted</span>';
+  if(s==="Under Review") return '<span class="badge badge-amber">⏳ Under Review</span>';
   if(s==="Under Review") return '<span class="badge badge-blue">🔍 Under Review</span>';
   if(s==="Resolved") return '<span class="badge badge-green">✓ Resolved</span>';
   if(s==="Rejected") return '<span class="badge badge-red">✗ Rejected</span>';
@@ -1560,7 +1560,7 @@ function hideAlert(el){el.className="alert";el.textContent="";}
 
 function calcEntryPay(e, dailyRate) {
   const workHrs = parseFloat(e.billableHrs||0);
-  const lunchHr = e.lunchTaken==="TRUE" ? 1 : 0;
+  const lunchHr = (e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true") ? 1 : 0;
   const totalHrs = Math.min(8, workHrs + lunchHr);
   const pay = totalHrs > 0 ? (totalHrs/8) * dailyRate : 0;
   const deduction = Math.max(0, 8 - totalHrs);

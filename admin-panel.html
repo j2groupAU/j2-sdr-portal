@@ -371,7 +371,7 @@ tr:hover td { background: #faf8f4; }
   </div>
   <div class="nav-tabs">
     <div class="nav-tab active" onclick="switchTab('entries')" id="tab-entries">📋 All Entries</div>
-    <div class="nav-tab" onclick="switchTab('disputes')" id="tab-disputes">⚠️ Disputes <span class="badge-count" id="dispute-count" style="display:none">0</span></div>
+    <div class="nav-tab" onclick="switchTab('disputes')" id="tab-disputes">⚠️ Request Reviews <span class="badge-count" id="dispute-count" style="display:none">0</span></div>
     <div class="nav-tab" onclick="switchTab('payroll')" id="tab-payroll">💰 Payroll Summary</div>
     <div class="nav-tab" onclick="switchTab('timesheets')" id="tab-timesheets">📤 Timesheets <span class="badge-count" id="ts-count" style="display:none">0</span></div>
     <div class="nav-tab" onclick="switchTab('leave')" id="tab-leave">🏖️ Leave <span class="badge-count" id="leave-count" style="display:none">0</span></div>
@@ -397,7 +397,7 @@ tr:hover td { background: #faf8f4; }
         <div id="entries-empty" class="empty-block" style="display:none;"><div class="icon">📭</div><p>No entries match your filters.</p></div>
         <div class="table-wrap" id="entries-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Submitted Times</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Submitted Times</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Request Review</th></tr></thead>
             <tbody id="entries-body"></tbody>
           </table>
         </div>
@@ -551,10 +551,10 @@ tr:hover td { background: #faf8f4; }
 <!-- RESOLVE MODAL -->
 <div class="modal-overlay" id="resolve-modal">
   <div class="modal">
-    <div class="modal-title">Resolve Dispute</div>
+    <div class="modal-title">Resolve Request Review</div>
     <div class="modal-sub" id="rm-sub">—</div>
     <div id="alert-resolve" class="alert"></div>
-    <div class="dispute-box"><div class="dispute-label">Dispute Reason</div><div class="dispute-text" id="rm-dispute-text">—</div></div>
+    <div class="dispute-box"><div class="dispute-label">Review Reason</div><div class="dispute-text" id="rm-dispute-text">—</div></div>
     <div class="info-row"><span class="key">Clock In</span><span class="val" id="rm-clock-in">—</span></div>
     <div class="info-row"><span class="key">Clock Out</span><span class="val" id="rm-clock-out">—</span></div>
     <div class="info-row"><span class="key">Actual Start</span><span class="val" id="rm-actual-start">—</span></div>
@@ -655,7 +655,7 @@ function renderEntriesTable() {
     const isPending = e.clockIn && !e.actualStart;
     const submitted = (e.clockIn||"—") + " → " + (e.clockOut||"—");
     const actual = e.actualStart ? ("<strong>"+e.actualStart+"</strong>" + (e.actualEnd?" → "+e.actualEnd:"")) : '<span class="badge badge-amber">Pending</span>';
-    const lunchStr = e.lunchTaken==="TRUE"
+    const lunchStr = (e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")
       ? `<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
       : '<span style="color:var(--muted);font-size:11px;">None</span>';
     // Main work row
@@ -765,7 +765,7 @@ async function saveEntry() {
 
 function renderDisputes() {
   setLoading("disputes",false);
-  const disputes=allEntries.filter(e=>e.disputeStatus==="Submitted"||e.disputeStatus==="Under Review");
+  const disputes=allEntries.filter(e=>e.disputeStatus==="Under Review"||e.disputeStatus==="Under Review");
   if(disputes.length===0){document.getElementById("disputes-empty").style.display="block";document.getElementById("disputes-content").style.display="none";return;}
   document.getElementById("disputes-empty").style.display="none";
   document.getElementById("disputes-content").style.display="block";
@@ -787,7 +787,7 @@ function renderDisputes() {
 }
 
 function updateDisputeCount(){
-  const c=allEntries.filter(e=>e.disputeStatus==="Submitted"||e.disputeStatus==="Under Review").length;
+  const c=allEntries.filter(e=>e.disputeStatus==="Under Review"||e.disputeStatus==="Under Review").length;
   const b=document.getElementById("dispute-count");
   if(c>0){b.style.display="inline-flex";b.textContent=c;}else{b.style.display="none";}
 }
@@ -893,7 +893,7 @@ async function renderPayroll(){
     const sdrHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
     const sdrDed=entries.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
     const sdrPay=Math.min(sdrCutoffRate, entries.reduce((s,e)=>{
-      const wh=parseFloat(e.billableHrs||0); const lh=e.lunchTaken==="TRUE"?1:0;
+      const wh=parseFloat(e.billableHrs||0); const lh=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")?1:0;
       const th=Math.min(8,wh+lh); return s+(th>0?(th/8)*sdrDailyRate:0);
     },0));
     // Find approved timesheet for this SDR
@@ -948,7 +948,7 @@ async function renderPayroll(){
           </tr></thead>
           <tbody>${entries.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
             const hrs=parseFloat(e.billableHrs||0);
-            const lh=e.lunchTaken==="TRUE"?1:0;
+            const lh=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")?1:0;
             const th=Math.min(8,hrs+lh);
             const dp=th>0?(th/8)*sdrDailyRate:0;
             const ded=Math.max(0,8-th);
@@ -1060,7 +1060,7 @@ function getCutoffDisplayLabel(cutoff){
 }
 function getDisputeBadge(s){
   if(!s||s==="None"||s==="")return'<span class="badge badge-gray">—</span>';
-  if(s==="Submitted")return'<span class="badge badge-orange">⚠️ Submitted</span>';
+  if(s==="Under Review")return'<span class="badge badge-orange">⚠️ Submitted</span>';
   if(s==="Under Review")return'<span class="badge badge-blue">🔍 Under Review</span>';
   if(s==="Resolved")return'<span class="badge badge-green">✓ Resolved</span>';
   if(s==="Rejected")return'<span class="badge badge-red">✗ Rejected</span>';
@@ -1254,7 +1254,7 @@ function buildTsCard(t) {
   const tid = t.id;
   const borderStyle = isDisputed ? "border-color:#fed7aa;background:#fffbf5" : "";
   const disputeHtml = isDisputed && t.disputeNotes
-    ? '<div class="dispute-box" style="margin-bottom:14px;"><div class="dispute-label">Dispute Reason</div><div class="dispute-text">'+t.disputeNotes+'</div></div>'
+    ? '<div class="dispute-box" style="margin-bottom:14px;"><div class="dispute-label">Review Reason</div><div class="dispute-text">'+t.disputeNotes+'</div></div>'
     : "";
   return '<div class="card" style="margin-bottom:14px;'+borderStyle+'">'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">'
@@ -1365,7 +1365,7 @@ function renderTimesheets() {
 function getTsBadge(status) {
   if(status==="Approved") return '<span class="badge badge-green">✓ Approved</span>';
   if(status==="Rejected") return '<span class="badge badge-red">✗ Rejected</span>';
-  if(status==="Disputed") return '<span class="badge badge-orange">⚠️ Disputed</span>';
+  if(status==="Disputed") return '<span class="badge badge-orange">⚠️ Request Reviewd</span>';
   return '<span class="badge badge-amber">⏳ Pending</span>';
 }
 
