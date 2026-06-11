@@ -346,7 +346,6 @@ tr:hover td { background: #faf8f4; }
   <div class="nav-tabs">
     <div class="nav-tab active" onclick="switchTab('time')" id="tab-time">⏱ Time Management</div>
     <div class="nav-tab" onclick="switchTab('timesheet')" id="tab-timesheet">📋 My Timesheet</div>
-    <div class="nav-tab" onclick="switchTab('pay')" id="tab-pay">💰 My Pay</div>
     <div class="nav-tab" onclick="switchTab('payslip')" id="tab-payslip">🧾 Payslip</div>
     <div class="nav-tab" onclick="switchTab('meetings')" id="tab-meetings">📅 Meetings</div>
     <div class="nav-tab" onclick="switchTab('submit')" id="tab-submit">📤 Submit Timesheet</div>
@@ -457,7 +456,6 @@ tr:hover td { background: #faf8f4; }
           <div class="mini-grid">
             <div class="mini-card"><div class="lbl">Days</div><div class="val" id="tss-days">—</div></div>
             <div class="mini-card"><div class="lbl">Billable Hrs</div><div class="val gold" id="tss-hrs">—</div></div>
-            <div class="mini-card"><div class="lbl">Est. Pay</div><div class="val green" id="tss-pay">—</div></div>
             <div class="mini-card"><div class="lbl">Timesheet</div><div class="val" id="tss-status">—</div></div>
           </div>
         </div>
@@ -473,44 +471,6 @@ tr:hover td { background: #faf8f4; }
       <div id="alert-timesheet" class="alert"></div>
       <div id="timesheet-loading" class="loading-block">Loading your records…</div>
       <div id="timesheet-content"></div>
-    </div>
-
-    <!-- ══ MY PAY ══ -->
-    <div class="page" id="page-pay">
-      <div class="page-header">
-        <div><h2>My Pay</h2></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadPay()">↻ Refresh</button>
-      </div>
-      <div class="cutoff-selector">
-        <button class="cutoff-btn active" onclick="selectPayCutoff('current')" id="pco-current">Current Period</button>
-        <button class="cutoff-btn" onclick="selectPayCutoff('prev')" id="pco-prev">Previous Period</button>
-      </div>
-      <div id="pay-loading" class="loading-block">Calculating…</div>
-      <div id="pay-content" style="display:none;">
-        <div id="pay-period-label" style="font-size:12px;color:var(--muted);margin-bottom:14px;font-weight:700;"></div>
-        <div class="pay-grid">
-          <div class="pay-stat"><div class="label">Days Worked</div><div class="value" id="pay-days">—</div><div class="sub">entries this period</div></div>
-          <div class="pay-stat"><div class="label">Billable Hours</div><div class="value gold" id="pay-hours">—</div><div class="sub">7hrs/day (excl. 1hr lunch)</div></div>
-          <div class="pay-stat"><div class="label">Deductions</div><div class="value red" id="pay-deductions">—</div><div class="sub">hours short of 7/day</div></div>
-          <div class="pay-stat"><div class="label">Estimated Pay</div><div class="value green" id="pay-total">—</div><div class="sub">AUD before incentives</div></div>
-        </div>
-        <div class="card" style="background:var(--off-white);border-style:dashed;">
-          <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Pay Rate Reference</div>
-          <div style="font-size:13px;color:var(--text);line-height:1.8;">
-            <div>Monthly rate: <strong id="ref-monthly">AUD —</strong></div>
-            <div>Per cutoff (½ month): <strong id="ref-cutoff">AUD —</strong></div>
-            <div>Daily rate: <strong id="ref-daily">AUD —</strong> (cutoff rate ÷ working days)</div>
-            <div>Paid lunch: <strong>1 hour/day</strong></div>
-          </div>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;">
-          <div style="padding:14px 18px;border-bottom:1.5px solid var(--border);"><div class="card-title" style="margin-bottom:0;">Daily Breakdown</div></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>Date</th><th>Billable Hrs</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th></tr></thead>
-            <tbody id="pay-body"></tbody>
-          </table></div>
-        </div>
-      </div>
     </div>
 
     <!-- ══ PAYSLIP ══ -->
@@ -635,7 +595,6 @@ let allEntries = [];
 let allTimesheets = [];
 let allMeetings = [];
 let allLeaves = [];
-let payCutoff = 'current';
 let submitCutoffVal = 'current';
 let psDisputeTsId = null;
 const AUTO_CLOCK_OUT_HOURS = 10;
@@ -937,7 +896,14 @@ async function loadTimeSummary() {
     const cutoffRate=monthlyRate/2;
     const wDays=getWorkingDaysInCutoff("current");
     const dailyRate=cutoffRate/wDays;
-    const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
+    // Include approved meeting hours in total
+    const meetingHrsForSummary = allMeetings.filter(m=>m.status==="Approved").reduce((s,m)=>{
+      if(filterByCutoff([{workDate:m.date,clockIn:true}],"current").length>0) {
+        return s + calcMins(m.startTime,m.endTime)/60;
+      }
+      return s;
+    },0);
+    const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0)+meetingHrsForSummary;
     let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
     totalPay=Math.min(totalPay,cutoffRate);
     // Get timesheet status
@@ -948,7 +914,6 @@ async function loadTimeSummary() {
     document.getElementById("ts-summary-period").textContent="Period: "+getCutoffDisplayLabel("current");
     document.getElementById("tss-days").textContent=filtered.length;
     document.getElementById("tss-hrs").textContent=totalHrs.toFixed(1)+" hrs";
-    document.getElementById("tss-pay").textContent="$"+totalPay.toFixed(2);
     const statusEl=document.getElementById("tss-status");
     if(tsStatus==="Approved") statusEl.innerHTML='<span class="badge badge-green">✓ Approved</span>';
     else if(tsStatus==="Pending") statusEl.innerHTML='<span class="badge badge-amber">⏳ Pending</span>';
@@ -1001,13 +966,15 @@ function renderTimesheetGrouped() {
     const tsStatus=ts?ts.status:"Not submitted";
     const tsStatusBadge=getTsBadge(tsStatus);
     const totalHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
+    const totalMeetingHrs=cutoffMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
+    const grandTotalHrs=totalHrs+totalMeetingHrs;
     // Get approved meetings for this cutoff's dates
     const cutoffDates = new Set(entries.map(e=>e.workDate));
     const cutoffMeetings = allMeetings.filter(m=>m.status==="Approved"&&cutoffDates.has(m.date));
 
     html+=`<div class="cutoff-group">
       <div class="cutoff-group-header">
-        <div><div class="title">${cutoffLabel}</div><div class="meta">${entries.length} entries &nbsp;·&nbsp; ${totalHrs.toFixed(1)} billable hrs${cutoffMeetings.length>0?" &nbsp;·&nbsp; "+cutoffMeetings.length+" meeting(s)":""}</div></div>
+        <div><div class="title">${cutoffLabel}</div><div class="meta">${entries.length} entries &nbsp;·&nbsp; ${grandTotalHrs.toFixed(1)} billable hrs (incl. ${totalMeetingHrs.toFixed(1)}h meetings)</div></div>
         <div style="display:flex;align-items:center;gap:10px;">${tsStatusBadge}</div>
       </div>
       <div class="cutoff-group-body">
@@ -1024,13 +991,20 @@ function renderTimesheetGrouped() {
               :'<span style="color:var(--muted);font-size:11px;">None</span>';
             // Get meetings for this specific date
             const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
+            // Calculate display billable: stored value OR clock-based estimate
+            const clockHrs = (e.clockIn&&e.clockOut) ? Math.max(0,(parseFloat(e.clockOut.replace(":","."))-parseFloat(e.clockIn.replace(":","."))) ) : 0;
+            const lunchAdd = e.lunchTaken==="TRUE" ? 1 : 0;
+            const displayBillable = parseFloat(e.billableHrs||0);
+            const billableDisplay = displayBillable>0
+              ? `<strong>${displayBillable.toFixed(2)} hrs</strong>${lunchAdd>0?'<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>':""}`
+              : (e.clockIn&&e.clockOut?"<span style='color:var(--muted)'>Pending</span>":"—");
             const mainRow=`<tr style="border-bottom:${dayMeetings.length>0?'none':'1px solid #f0ece4'};">
               <td><strong>${formatDate(e.workDate)}</strong></td>
               <td><span class="badge badge-blue" style="font-size:10px;">Work</span></td>
               <td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td>
               <td style="font-size:12px;">${actualStr}</td>
               <td>${lunchStr}</td>
-              <td>${e.billableHrs>0?"<strong>"+parseFloat(e.billableHrs).toFixed(2)+" hrs</strong>":"—"}</td>
+              <td>${billableDisplay}</td>
               <td>${e.deduction>0?'<span style="color:var(--red)">-'+parseFloat(e.deduction).toFixed(2)+'h</span>':"—"}</td>
               <td style="white-space:nowrap;">${disputeCell}</td>
             </tr>`;
@@ -1115,55 +1089,8 @@ async function submitEntryDispute(){
 }
 
 // ── MY PAY ──
-async function loadPay() {
-  document.getElementById("pay-loading").style.display="block";
-  document.getElementById("pay-content").style.display="none";
-  if(allEntries.length===0){try{allEntries=await fetchEntries();}catch(e){}}
-  renderPay();
-}
-function calcEntryPay(e, dailyRate) {
-  const workHrs = parseFloat(e.billableHrs||0);
-  const lunchHr = e.lunchTaken==="TRUE" ? 1 : 0;
-  const totalHrs = Math.min(8, workHrs + lunchHr); // max 8hrs full day
-  const pay = totalHrs > 0 ? (totalHrs/8) * dailyRate : 0;
-  const deduction = Math.max(0, 8 - totalHrs);
-  return { totalHrs, pay, deduction };
-}
 
-function renderPay(){
-  const filtered=filterByCutoff(allEntries,payCutoff).filter(e=>e.clockIn);
-  document.getElementById("pay-period-label").textContent="Period: "+getCutoffDisplayLabel(payCutoff);
-  const monthlyRate=currentUser.rate||0; const cutoffRate=monthlyRate/2;
-  const wDays=getWorkingDaysInCutoff(payCutoff); const dailyRate=cutoffRate/wDays;
-  document.getElementById("ref-monthly").textContent="AUD $"+monthlyRate.toFixed(2);
-  document.getElementById("ref-cutoff").textContent="AUD $"+cutoffRate.toFixed(2);
-  document.getElementById("ref-daily").textContent="AUD $"+dailyRate.toFixed(2);
-  const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
-  const totalDed=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).deduction,0);
-  let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
-  totalPay=Math.min(totalPay,cutoffRate);
-  document.getElementById("pay-days").textContent=filtered.length;
-  document.getElementById("pay-hours").textContent=totalHrs.toFixed(2);
-  document.getElementById("pay-deductions").textContent="-"+totalDed.toFixed(2)+" hrs";
-  document.getElementById("pay-total").textContent="AUD $"+totalPay.toFixed(2);
-  const body=document.getElementById("pay-body");
-  body.innerHTML=filtered.length===0
-    ?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No entries yet.</td></tr>'
-    :filtered.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
-        const {totalHrs:th, pay, deduction:ded} = calcEntryPay(e, dailyRate);
-        const lunchNote = e.lunchTaken==="TRUE" ? '<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>' : "";
-        return`<tr>
-          <td>${formatDate(e.workDate)}</td>
-          <td>${parseFloat(e.billableHrs||0).toFixed(2)} hrs${lunchNote}</td>
-          <td>${ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—"}</td>
-          <td><strong>$${pay.toFixed(2)}</strong></td>
-          <td>${getDisputeBadge(e.disputeStatus)}</td>
-        </tr>`;
-      }).join("");
-  document.getElementById("pay-loading").style.display="none";
-  document.getElementById("pay-content").style.display="block";
-}
-function selectPayCutoff(val){payCutoff=val;document.querySelectorAll("#page-pay .cutoff-btn").forEach(b=>b.classList.remove("active"));document.getElementById("pco-"+val).classList.add("active");renderPay();}
+
 
 // ── PAYSLIP ──
 async function loadPayslip() {
@@ -1545,7 +1472,6 @@ function switchTab(tab){
   document.getElementById("page-"+tab).classList.add("active");
   document.getElementById("tab-"+tab).classList.add("active");
   if(tab==="timesheet") loadTimesheet();
-  if(tab==="pay") loadPay();
   if(tab==="payslip") loadPayslip();
   if(tab==="meetings") { allMeetings=[]; loadMeetings(); }
   if(tab==="submit") loadSubmitPage();
