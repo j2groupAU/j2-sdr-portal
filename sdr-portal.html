@@ -780,7 +780,7 @@ async function loadPayslip() {
   renderPayslip();
 }
 
-async async function renderPayslip() {
+async function renderPayslip() {
   const filtered = filterByCutoff(allEntries, payslipCutoff).filter(e=>e.clockIn);
   const monthlyRate = currentUser.rate||0;
   const cutoffRate = monthlyRate/2;

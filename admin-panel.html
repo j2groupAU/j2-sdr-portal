@@ -949,6 +949,53 @@ function updateTsCount() {
   if(c>0){b.style.display="inline-flex";b.textContent=c;}else{b.style.display="none";}
 }
 
+function buildTsCard(t) {
+  const isDisputed = t.status === "Disputed";
+  const basePay = parseFloat(t.totalPay||0);
+  const tid = t.id;
+  const borderStyle = isDisputed ? "border-color:#fed7aa;background:#fffbf5" : "";
+  const disputeHtml = isDisputed && t.disputeNotes
+    ? '<div class="dispute-box" style="margin-bottom:14px;"><div class="dispute-label">Dispute Reason</div><div class="dispute-text">'+t.disputeNotes+'</div></div>'
+    : "";
+  return '<div class="card" style="margin-bottom:14px;'+borderStyle+'">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">'
+    +   '<div>'
+    +     '<div style="font-size:15px;font-weight:700;color:var(--navy);">'+t.sdrName+'</div>'
+    +     '<div style="font-size:12px;color:var(--muted);margin-top:3px;">'+(t.cutoffLabel||t.cutoffKey)+' &nbsp;|&nbsp; '+t.totalDays+' days &nbsp;|&nbsp; Base Pay: <strong>AUD $'+basePay.toFixed(2)+'</strong></div>'
+    +   '</div>'
+    +   getTsBadge(t.status)
+    + '</div>'
+    + disputeHtml
+    + '<div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;">'
+    +   '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:12px;">💰 Incentives (optional)</div>'
+    +   '<div id="incentive-rows-'+tid+'">'
+    +     '<div class="incentive-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">'
+    +       '<input type="text" placeholder="Description (e.g. Booked Meetings)" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;width:100%;" class="inc-desc" />'
+    +       '<input type="number" placeholder="Units" min="0" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;width:100%;" class="inc-units" oninput="updateIncentiveTotal(\'' + tid + '\')" />'
+    +       '<input type="number" placeholder="Rate (AUD)" min="0" step="0.01" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;width:100%;" class="inc-rate" oninput="updateIncentiveTotal(\'' + tid + '\')" />'
+    +       '<button onclick="removeIncentiveRow(this,\'' + tid + '\')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:4px;">✕</button>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">'
+    +     '<button class="btn btn-secondary btn-sm" onclick="addIncentiveRow(\'' + tid + '\')">+ Add Another</button>'
+    +     '<div style="font-size:14px;font-weight:700;color:var(--navy);">Incentive Total: <span id="incentive-total-'+tid+'" style="color:var(--cyan);">AUD $0.00</span></div>'
+    +   '</div>'
+    +   '<div style="font-size:12px;font-weight:700;color:#15803d;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">'
+    +     '<span>Total Pay (Base + Incentive)</span>'
+    +     '<span id="grand-total-'+tid+'">AUD $'+basePay.toFixed(2)+'</span>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="field-group" style="margin-bottom:12px;">'
+    +   '<label>Admin Note (optional)</label>'
+    +   '<input type="text" id="ts-note-'+tid+'" placeholder="Add a note for the SDR…" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:100%;outline:none;" />'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    +   '<button class="btn btn-success btn-sm" onclick="approveTimesheet(\'' + tid + '\',' + basePay + ')">✓ Approve</button>'
+    +   '<button class="btn btn-danger btn-sm" onclick="rejectTimesheet(\'' + tid + '\')">✗ Reject</button>'
+    + '</div>'
+    + '</div>';
+}
+
 function renderTimesheets() {
   document.getElementById("timesheets-loading").style.display="none";
   let filtered = allTimesheets;
@@ -989,50 +1036,7 @@ function renderTimesheets() {
 
   if(pending.length > 0) {
     html += `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:12px;">Needs Action (${pending.length})</div>`;
-    html += pending.map(t => {
-      const isDisputed = t.status==="Disputed";
-      const existingIncentives = (t.incentives||"") ? JSON.parse(t.incentives||"[]") : [];
-      return `<div class="card" style="margin-bottom:14px;${isDisputed?"border-color:#fed7aa;background:#fffbf5":""}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--navy);">${t.sdrName}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:3px;">${t.cutoffLabel||t.cutoffKey} &nbsp;|&nbsp; ${t.totalDays} days &nbsp;|&nbsp; Base Pay: <strong>AUD $${parseFloat(t.totalPay||0).toFixed(2)}</strong></div>
-          </div>
-          ${getTsBadge(t.status)}
-        </div>
-        ${isDisputed&&t.disputeNotes?`<div class="dispute-box" style="margin-bottom:14px;"><div class="dispute-label">Dispute Reason</div><div class="dispute-text">${t.disputeNotes}</div></div>`:""}
-
-        <!-- INCENTIVES SECTION -->
-        <div style="background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:12px;">💰 Incentives (optional)</div>
-          <div id="incentive-rows-${t.id}">
-            <div class="incentive-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
-              <input type="text" placeholder="Description (e.g. Booked Meetings)" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;" class="inc-desc" />
-              <input type="number" placeholder="Units" min="0" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;" class="inc-units" oninput="updateIncentiveTotal('${t.id}')" />
-              <input type="number" placeholder="Rate (AUD)" min="0" step="0.01" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;outline:none;" class="inc-rate" oninput="updateIncentiveTotal('${t.id}')" />
-              <button onclick="removeIncentiveRow(this,'${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:4px;">✕</button>
-            </div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:8px;">
-            <button class="btn btn-secondary btn-sm" onclick="addIncentiveRow('${t.id}')">+ Add Another</button>
-            <div style="font-size:14px;font-weight:700;color:var(--navy);">Total Incentive: <span id="incentive-total-${t.id}" style="color:var(--cyan);">AUD $0.00</span></div>
-          </div>
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
-            <span>Total Pay (Base + Incentive)</span>
-            <span id="grand-total-${t.id}">AUD $${parseFloat(t.totalPay||0).toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div class="field-group" style="margin-bottom:12px;">
-          <label>Admin Note (optional)</label>
-          <input type="text" id="ts-note-${t.id}" placeholder="Add a note for the SDR…" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;width:100%;outline:none;" />
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="approveTimesheet('${t.id}',${parseFloat(t.totalPay||0)})">✓ Approve</button>
-          <button class="btn btn-danger btn-sm" onclick="rejectTimesheet('${t.id}')">✗ Reject</button>
-        </div>
-      </div>`;
-    }).join("");
+    html += pending.map(t => buildTsCard(t)).join("");
   }
 
   if(resolved.length > 0) {
