@@ -490,22 +490,6 @@ let timesheetCutoff = 'current';
 let payCutoff = 'current';
 let allEntries = [];
 
-async function api(payload) {
-  const res = await fetch(API, {
-    method: "POST", mode: "no-cors",
-    headers: { "Content-Type": "text/plain" },
-    body: JSON.stringify(payload)
-  });
-  // no-cors returns opaque response; use GET workaround for reads
-  return {};
-}
-
-async function apiGet(payload) {
-  const url = API + "?data=" + encodeURIComponent(JSON.stringify(payload));
-  const res = await fetch(url);
-  return await res.json();
-}
-
 async function apiPost(payload) {
   const res = await fetch(API, {
     method: "POST",
@@ -848,7 +832,7 @@ async async function renderPayslip() {
     const iLine=document.createElement("div");
     iLine.id="ps-incentive-line";
     iLine.style.cssText="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;color:#0369a1;";
-    iLine.innerHTML=`<span>Incentive</span><span>+AUD $${tsIncentive.toFixed(2)}</span>`;
+    iLine.innerHTML="<span>Incentive</span><span>+AUD $"+tsIncentive.toFixed(2)+"</span>";
     document.getElementById("ps-net-pay").parentNode.insertBefore(iLine, document.getElementById("ps-net-pay"));
   }
   document.getElementById("ps-net-pay").textContent = "AUD $"+tsGrandTotal.toFixed(2);
