@@ -325,7 +325,7 @@ async function loadAllEntries() {
   try {
     const result = await apiPost({ action: "getEntries" });
     allEntries = (result.entries || []).sort((a,b) => b.workDate.localeCompare(a.workDate));
-    populateSdrFilter(); applyFilters(); renderDisputes(); renderPayroll(); updateDisputeCount();
+    populateSdrFilter(); applyFilters(); renderDisputes(); await renderPayroll(); updateDisputeCount();
   } catch(e) {
     showAlert(document.getElementById("alert-entries"), "error", "Failed to load: " + e.message);
     setLoading("entries",false); setLoading("disputes",false); setLoading("payroll",false);
@@ -511,14 +511,14 @@ async function resolveDispute(resolution){
   btnR.disabled=false; btnX.disabled=false;
 }
 
-function selectPayrollCutoff(val){
+async function selectPayrollCutoff(val){
   payrollCutoff=val;
   document.querySelectorAll(".cutoff-btn").forEach(b=>b.classList.remove("active"));
   document.getElementById("pcobtn-"+val).classList.add("active");
-  renderPayroll();
+  await renderPayroll();
 }
 
-function renderPayroll(){
+async function renderPayroll(){
   setLoading("payroll",false);
   const pe=filterByCutoff(allEntries,payrollCutoff).filter(e=>parseFloat(e.billableHrs)>0);
   const label=getCutoffDisplayLabel(payrollCutoff);
