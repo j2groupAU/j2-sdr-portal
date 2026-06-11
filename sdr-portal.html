@@ -959,14 +959,14 @@ function renderTimesheetGrouped() {
     const tsStatus=ts?ts.status:"Not submitted";
     const tsStatusBadge=getTsBadge(tsStatus);
     const totalHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
+    // Get approved meetings for this cutoff's dates
+    const cutoffDates = new Set(entries.map(e=>e.workDate));
+    const cutoffMeetings = allMeetings.filter(m=>m.status==="Approved"&&cutoffDates.has(m.date));
     const totalMeetingHrs=cutoffMeetings.reduce((s,m)=>{
       const mins=calcMins(m.startTime,m.endTime);
       return s+(mins>0?mins/60:0);
     },0);
     const grandTotalHrs=totalHrs+totalMeetingHrs;
-    // Get approved meetings for this cutoff's dates
-    const cutoffDates = new Set(entries.map(e=>e.workDate));
-    const cutoffMeetings = allMeetings.filter(m=>m.status==="Approved"&&cutoffDates.has(m.date));
 
     html+=`<div class="cutoff-group">
       <div class="cutoff-group-header">
@@ -1369,13 +1369,12 @@ function renderSubmitPage(){
         <div class="mini-card"><div class="lbl">Days</div><div class="val">${filtered.length}</div></div>
         <div class="mini-card"><div class="lbl">Billable Hrs</div><div class="val gold">${totalHrs.toFixed(2)}</div></div>
         <div class="mini-card"><div class="lbl">Deductions</div><div class="val red">-${totalDed.toFixed(2)}h</div></div>
-        <div class="mini-card"><div class="lbl">Est. Pay</div><div class="val green">$${totalPay.toFixed(2)}</div></div>
       </div>
     </div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1.5px solid var(--border);"><div class="card-title" style="margin-bottom:0;">Entries</div></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th></tr></thead>
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Billable</th><th>Deduction</th></tr></thead>
         <tbody>${filtered.length===0?'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>':filtered.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
           const h=parseFloat(e.billableHrs||0),ded=parseFloat(e.deduction||0);
           const pay=h>0?Math.min(dailyRate,h/7*dailyRate):0;
