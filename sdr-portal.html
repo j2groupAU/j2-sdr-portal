@@ -180,7 +180,7 @@
         <div id="timesheet-empty" class="empty-block" style="display:none;"><div class="empty-icon">📭</div><p>No entries found for this period.</p></div>
         <div class="table-wrap" id="timesheet-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Actual Start</th><th>Actual End</th><th>Billable Hrs</th><th>Deduction</th><th>Dispute</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Actual (Start–End)</th><th>Billable</th><th>Deduction</th><th>Dispute</th></tr></thead>
             <tbody id="timesheet-body"></tbody>
           </table>
         </div>
@@ -398,7 +398,9 @@ function renderTimesheet() {
   document.getElementById("timesheet-table-wrap").style.display="block";
   document.getElementById("timesheet-body").innerHTML=filtered.map(e=>{
     const canDispute=e.actualStart&&!["Submitted","Under Review"].includes(e.disputeStatus);
-    return `<tr><td><strong>${formatDate(e.workDate)}</strong></td><td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td><td>${e.actualStart||'<span style="color:var(--muted)">Pending</span>'}</td><td>${e.actualEnd||"—"}</td><td>${e.billableHrs>0?"<strong>"+parseFloat(e.billableHrs).toFixed(2)+"</strong>":"—"}</td><td>${e.deduction>0?'<span style="color:var(--red)">-'+parseFloat(e.deduction).toFixed(2)+"</span>":"—"}</td><td>${getDisputeBadge(e.disputeStatus)}</td><td>${canDispute?`<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Dispute</button>`:""}</td></tr>`;
+    const actualStr=e.actualStart?(e.actualStart+(e.actualEnd?" – "+e.actualEnd:"")):'<span style="color:var(--muted)">Pending</span>';
+    const disputeCell=canDispute?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Dispute</button>`:getDisputeBadge(e.disputeStatus);
+    return `<tr><td><strong>${formatDate(e.workDate)}</strong></td><td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td><td>${actualStr}</td><td>${e.billableHrs>0?"<strong>"+parseFloat(e.billableHrs).toFixed(2)+" hrs</strong>":"—"}</td><td>${e.deduction>0?'<span style="color:var(--red)">-'+parseFloat(e.deduction).toFixed(2)+"</span>":"—"}</td><td style="white-space:nowrap">${disputeCell}</td></tr>`;
   }).join("");
 }
 

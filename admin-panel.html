@@ -161,7 +161,7 @@
         <div id="entries-empty" class="empty-block" style="display:none;"><div class="icon">📭</div><p>No entries match your filters.</p></div>
         <div class="table-wrap" id="entries-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>SDR</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Actual Start</th><th>Actual End</th><th>Billable Hrs</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th><th style="text-align:center">Actions</th></tr></thead>
+            <thead><tr><th>SDR</th><th>Date</th><th>Submitted Times</th><th>Actual (JustCall)</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th><th style="text-align:center">Actions</th></tr></thead>
             <tbody id="entries-body"></tbody>
           </table>
         </div>
@@ -360,14 +360,14 @@ function renderEntriesTable() {
   document.getElementById("entries-table-wrap").style.display="block";
   document.getElementById("entries-body").innerHTML = filteredEntries.map(e => {
     const isPending = e.clockIn && !e.actualStart;
+    const submitted = (e.clockIn||"—") + " → " + (e.clockOut||"—");
+    const actual = e.actualStart ? ("<strong>"+e.actualStart+"</strong>" + (e.actualEnd?" → "+e.actualEnd:"")) : '<span class="badge badge-amber">Pending</span>';
     return `<tr>
       <td><strong>${e.sdrName||"—"}</strong></td>
       <td style="white-space:nowrap">${formatDate(e.workDate)}</td>
-      <td>${e.clockIn||"—"}</td>
-      <td>${e.clockOut||"—"}</td>
-      <td>${e.actualStart?`<strong>${e.actualStart}</strong>`:'<span class="badge badge-amber">Pending</span>'}</td>
-      <td>${e.actualEnd||"—"}</td>
-      <td>${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(2)}</strong>`:"—"}</td>
+      <td style="white-space:nowrap;font-size:12px;">${submitted}</td>
+      <td style="white-space:nowrap;font-size:12px;">${actual}</td>
+      <td>${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(2)} hrs</strong>`:"—"}</td>
       <td>${e.deduction>0?`<span style="color:var(--red)">-${parseFloat(e.deduction).toFixed(2)}</span>`:"—"}</td>
       <td>${e.dailyPay>0?`<strong>$${parseFloat(e.dailyPay).toFixed(2)}</strong>`:"—"}</td>
       <td>${getDisputeBadge(e.disputeStatus)}</td>
