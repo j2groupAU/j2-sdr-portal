@@ -209,9 +209,10 @@
         </div>
         <div class="two-col">
           <div class="field-group"><label>Password</label><input type="text" id="new-user-password" placeholder="Choose a password" /></div>
-          <div style="display:flex;align-items:flex-end;">
-            <button class="btn btn-primary" onclick="addUser()" id="btn-add-user" style="width:100%;">Add User</button>
-          </div>
+          <div class="field-group"><label>Monthly Rate (AUD)</label><input type="number" id="new-user-rate" placeholder="e.g. 2000" min="0" step="100" /></div>
+        </div>
+        <div style="margin-top:4px;">
+          <button class="btn btn-primary" onclick="addUser()" id="btn-add-user">Add User</button>
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden;">
@@ -219,7 +220,7 @@
         <div id="users-empty" class="empty-block" style="display:none;"><div class="icon">👥</div><p>No users yet.</p></div>
         <div class="table-wrap" id="users-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>Name</th><th>Email</th><th>Password</th><th style="text-align:center">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Monthly Rate</th><th>Password</th><th style="text-align:center">Actions</th></tr></thead>
             <tbody id="users-body"></tbody>
           </table>
         </div>
@@ -524,6 +525,9 @@ function renderPayroll(){
   if(pe.length===0){document.getElementById("payroll-content").innerHTML=`<div class="empty-block"><div class="icon">💸</div><p>No payable entries for this period yet.</p></div>`;document.getElementById("payroll-content").style.display="block";return;}
   const bySdr={};
   pe.forEach(e=>{if(!bySdr[e.sdrName])bySdr[e.sdrName]=[];bySdr[e.sdrName].push(e);});
+  // Load user rates
+  let userRates={};
+  try { const ur=await apiPost({action:"getUsers"}); (ur.users||[]).forEach(u=>{userRates[u.name]=parseFloat(u.rate)||0;}); } catch(e){}
   const totalPay=pe.reduce((s,e)=>s+parseFloat(e.dailyPay||0),0);
   const totalHrs=pe.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
   let html=`<div style="font-size:13px;color:var(--muted);font-weight:600;margin-bottom:16px;">Period: ${label}</div>
@@ -537,8 +541,13 @@ function renderPayroll(){
     const sdrHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
     const sdrDed=entries.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
     const sdrPay=entries.reduce((s,e)=>s+parseFloat(e.dailyPay||0),0);
+    const sdrMonthlyRate=userRates[name]||0;
+    const sdrCutoffRate=sdrMonthlyRate/2;
     html+=`<div class="card">
-      <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;">${name}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:15px;font-weight:700;color:var(--navy);">${name}</div>
+        <div style="font-size:12px;color:var(--muted);">Monthly: <strong>AUD $${sdrMonthlyRate.toFixed(2)}</strong> &nbsp;|&nbsp; This cutoff: <strong>AUD $${sdrCutoffRate.toFixed(2)}</strong></div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
         <div class="stat-card" style="padding:12px;"><div class="label">Days</div><div class="value" style="font-size:20px;">${entries.length}</div></div>
         <div class="stat-card" style="padding:12px;"><div class="label">Billable Hrs</div><div class="value cyan" style="font-size:20px;">${sdrHrs.toFixed(2)}</div></div>
@@ -584,12 +593,14 @@ async function addUser(){
   if(!name||!password){showAlert(alert,"error","Name and password are required.");return;}
   btn.innerHTML='<span class="spinner"></span> Adding…'; btn.disabled=true;
   try {
-    const result=await apiPost({action:"addUser",name,email,password});
+    const rate=parseFloat(document.getElementById("new-user-rate").value)||0;
+    const result=await apiPost({action:"addUser",name,email,password,rate});
     if(!result.success) throw new Error("Failed");
     showAlert(alert,"success",`✓ ${name} added. They can log in immediately.`);
     document.getElementById("new-user-name").value="";
     document.getElementById("new-user-email").value="";
     document.getElementById("new-user-password").value="";
+    document.getElementById("new-user-rate").value="";
     loadUsers();
   } catch(e){showAlert(alert,"error","Could not add user: "+e.message);}
   btn.innerHTML="Add User"; btn.disabled=false;

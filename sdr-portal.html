@@ -205,9 +205,10 @@
         <div class="card" style="background:#f8fafc;border-style:dashed;">
           <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Pay Rate Reference</div>
           <div style="font-size:13px;color:var(--text);line-height:1.7;">
-            <div>Full day (7 billable hrs): <strong>AUD $2,000</strong></div>
-            <div>Hourly rate: <strong>AUD $285.71 / hr</strong></div>
-            <div>Working hours: 8hrs total (incl. 1hr unpaid lunch)</div>
+            <div>Monthly rate: <strong id="ref-monthly">AUD —</strong></div>
+            <div>Per cutoff period (½ month): <strong id="ref-cutoff">AUD —</strong></div>
+            <div>Working hours: 8hrs total (incl. 1hr unpaid lunch = 7 billable hrs)</div>
+            <div>Deductions apply per hour short of 7 billable hrs/day</div>
           </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
@@ -286,7 +287,7 @@ async function doLogin() {
     const users = result.users || [];
     const user = users.find(u => u.name.toLowerCase().trim() === name.toLowerCase().trim() && u.password === pass);
     if (!user) { err.style.display="block"; err.textContent="Incorrect name or password."; loading.style.display="none"; btn.disabled=false; btn.innerHTML="Sign In"; return; }
-    currentUser = { id: user.id, name: user.name, email: user.email || "" };
+    currentUser = { id: user.id, name: user.name, email: user.email || "", rate: parseFloat(user.rate) || 0 };
     document.getElementById("login-screen").style.display="none";
     document.getElementById("app").style.display="block";
     document.getElementById("user-chip").textContent=currentUser.name;
@@ -414,17 +415,31 @@ async function loadPay() {
 }
 
 function renderPay() {
-  const filtered=filterByCutoff(allEntries,payCutoff).filter(e=>parseFloat(e.billableHrs)>0);
+  const filtered=filterByCutoff(allEntries,payCutoff);
   document.getElementById("pay-period-label").textContent="Period: "+getCutoffDisplayLabel(payCutoff);
-  const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
-  const totalDed=filtered.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
-  const totalPay=filtered.reduce((s,e)=>s+parseFloat(e.dailyPay||0),0)||totalHrs*(2000/7);
-  document.getElementById("pay-days").textContent=filtered.length;
+  const monthlyRate=currentUser.rate||0;
+  const cutoffRate=monthlyRate/2;
+  const workingDays=filtered.filter(e=>e.clockIn).length||1;
+  const dailyRate=cutoffRate/workingDays;
+  const hourlyDeductRate=dailyRate/7;
+  // Update reference box
+  if(document.getElementById("ref-monthly")) document.getElementById("ref-monthly").textContent="AUD $"+monthlyRate.toFixed(2);
+  if(document.getElementById("ref-cutoff")) document.getElementById("ref-cutoff").textContent="AUD $"+cutoffRate.toFixed(2);
+  const payable=filtered.filter(e=>parseFloat(e.billableHrs)>0||e.clockIn);
+  const totalHrs=payable.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
+  const totalDed=payable.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
+  const totalPay=payable.reduce((s,e)=>s+parseFloat(e.dailyPay||0),0);
+  document.getElementById("pay-days").textContent=payable.length;
   document.getElementById("pay-hours").textContent=totalHrs.toFixed(2);
   document.getElementById("pay-deductions").textContent="-"+totalDed.toFixed(2);
   document.getElementById("pay-total").textContent="AUD $"+totalPay.toFixed(2);
   const body=document.getElementById("pay-body");
-  body.innerHTML=filtered.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No payable entries yet.</td></tr>`:filtered.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{const pay=parseFloat(e.dailyPay)||(parseFloat(e.billableHrs)*(2000/7));return`<tr><td>${formatDate(e.workDate)}</td><td>${parseFloat(e.billableHrs).toFixed(2)} hrs</td><td>${e.deduction>0?'<span style="color:var(--red)">-'+parseFloat(e.deduction).toFixed(2)+"</span>":"—"}</td><td><strong>$${pay.toFixed(2)}</strong></td><td>${getDisputeBadge(e.disputeStatus)}</td></tr>`;}).join("");
+  body.innerHTML=payable.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No entries yet.</td></tr>`:payable.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
+    const hrs=parseFloat(e.billableHrs||0);
+    const ded=parseFloat(e.deduction||0);
+    const pay=parseFloat(e.dailyPay)||Math.max(0,dailyRate-(ded*hourlyDeductRate));
+    return`<tr><td>${formatDate(e.workDate)}</td><td>${hrs.toFixed(2)} hrs</td><td>${ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+"h</span>":"—"}</td><td><strong>$${pay.toFixed(2)}</strong></td><td>${getDisputeBadge(e.disputeStatus)}</td></tr>`;
+  }).join("");
   document.getElementById("pay-loading").style.display="none";
   document.getElementById("pay-content").style.display="block";
 }
