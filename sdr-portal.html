@@ -1558,6 +1558,15 @@ function getDisputeBadge(s){
 function formatDate(d){if(!d)return"—";try{return new Date(d+"T12:00:00").toLocaleDateString("en-AU",{day:"numeric",month:"short",year:"numeric"});}catch{return d;}}
 function showAlert(el,type,msg){el.className="alert show alert-"+type;el.textContent=msg;}
 function hideAlert(el){el.className="alert";el.textContent="";}
+
+function calcEntryPay(e, dailyRate) {
+  const workHrs = parseFloat(e.billableHrs||0);
+  const lunchHr = e.lunchTaken==="TRUE" ? 1 : 0;
+  const totalHrs = Math.min(8, workHrs + lunchHr);
+  const pay = totalHrs > 0 ? (totalHrs/8) * dailyRate : 0;
+  const deduction = Math.max(0, 8 - totalHrs);
+  return { totalHrs, pay, deduction };
+}
 </script>
 </body>
 </html>
