@@ -390,6 +390,32 @@ tr:hover td { background: #faf8f4; }
             <div class="time-display" id="live-time-2">--:--:--</div>
             <div class="time-sub">Current AEST time — recorded on clock out</div>
           </div>
+          <!-- LUNCH BUTTON -->
+          <div id="lunch-section" style="margin-bottom:14px;">
+            <div id="lunch-not-started">
+              <button class="btn btn-full" onclick="startLunch()" id="btn-start-lunch"
+                style="background:linear-gradient(135deg,#FF8C00,#FFA500);color:white;margin-bottom:8px;">
+                🍽️ Start Lunch Break
+              </button>
+            </div>
+            <div id="lunch-in-progress" style="display:none;">
+              <div style="background:linear-gradient(135deg,#FFF8EC,#FFEECC);border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #FFA500;">
+                <div style="font-size:11px;color:#996600;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">On Lunch Break since</div>
+                <div style="font-size:15px;font-weight:800;color:#664400;" id="lunch-start-display">—</div>
+              </div>
+              <button class="btn btn-full" onclick="endLunch()" id="btn-end-lunch"
+                style="background:linear-gradient(135deg,#FFA500,#FF8C00);color:white;margin-bottom:8px;">
+                ✅ End Lunch Break
+              </button>
+            </div>
+            <div id="lunch-done" style="display:none;">
+              <div style="background:linear-gradient(135deg,#E8FFF5,#D0F5E8);border-radius:10px;padding:10px 14px;border-left:3px solid #00D68F;">
+                <span style="font-size:12px;font-weight:700;color:#0A8050;">🍽️ Lunch taken</span>
+                <span style="font-size:11px;color:#15803d;margin-left:8px;" id="lunch-time-display">—</span>
+                <span style="font-size:10px;color:#0A8050;margin-left:8px;">1hr paid ✓</span>
+              </div>
+            </div>
+          </div>
           <button class="btn btn-danger btn-full" onclick="submitClockOut()" id="btn-clock-out">Clock Out Now</button>
         </div>
 
@@ -613,6 +639,8 @@ let payCutoff = 'current';
 let submitCutoffVal = 'current';
 let psDisputeTsId = null;
 const AUTO_CLOCK_OUT_HOURS = 10;
+let lunchStartTime = null;
+let lunchTaken = false;
 
 // ── API ──
 async function apiPost(payload) {
@@ -677,6 +705,36 @@ function setTodayDate() {
   ["clock-in-date","meeting-date"].forEach(id => { const el=document.getElementById(id); if(el) el.value=today; });
 }
 
+
+// ── LUNCH ──
+function startLunch() {
+  const aestTime = new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",hour12:false,hour:"2-digit",minute:"2-digit"});
+  lunchStartTime = aestTime;
+  document.getElementById("lunch-not-started").style.display = "none";
+  document.getElementById("lunch-in-progress").style.display = "block";
+  document.getElementById("lunch-start-display").textContent = aestTime;
+}
+
+async function endLunch() {
+  const aestTime = new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",hour12:false,hour:"2-digit",minute:"2-digit"});
+  lunchTaken = true;
+  // Save lunch times to the entry
+  if (openClockInEntry) {
+    try {
+      await apiPost({action:"updateEntry", id:openClockInEntry.itemId, lunchStart:lunchStartTime, lunchEnd:aestTime, lunchTaken:"TRUE"});
+    } catch(e) {}
+  }
+  document.getElementById("lunch-in-progress").style.display = "none";
+  document.getElementById("lunch-done").style.display = "block";
+  document.getElementById("lunch-time-display").textContent = lunchStartTime + " – " + aestTime;
+}
+
+function resetLunchUI() {
+  lunchStartTime = null; lunchTaken = false;
+  document.getElementById("lunch-not-started").style.display = "block";
+  document.getElementById("lunch-in-progress").style.display = "none";
+  document.getElementById("lunch-done").style.display = "none";
+}
 // ── AUTO CLOCK OUT ──
 async function checkAutoClockOut() {
   if (!openClockInEntry) return;
@@ -783,19 +841,27 @@ async function checkOpenClockIn() {
     const entries = await fetchEntries();
     allEntries = entries;
     const open = entries.find(e => e.workDate===today && e.clockIn && !e.clockOut);
-    if (open) { openClockInEntry={itemId:open.id, clockInTime:open.clockIn}; showClockedIn(open.clockIn); }
+    if (open) { openClockInEntry={itemId:open.id, clockInTime:open.clockIn}; showClockedIn(open.clockIn, open); }
     else showClockedOut();
     loadTimeSummary();
   } catch(e) { showClockedOut(); }
 }
 
-function showClockedIn(t) {
+function showClockedIn(t, lunchData) {
   document.getElementById("clock-status-block").className="clock-status clocked-in";
   document.getElementById("clock-status-text").textContent="Clocked in at "+t+" — remember to clock out before finishing.";
   document.getElementById("clock-card-in").style.display="none";
   document.getElementById("clock-card-out").style.display="block";
   document.getElementById("clock-in-time-display").textContent=t;
   document.getElementById("quick-meeting-card").style.display="block";
+  // Restore lunch state if already taken today
+  if(lunchData && lunchData.lunchTaken==="TRUE") {
+    lunchTaken=true;
+    document.getElementById("lunch-not-started").style.display="none";
+    document.getElementById("lunch-in-progress").style.display="none";
+    document.getElementById("lunch-done").style.display="block";
+    document.getElementById("lunch-time-display").textContent=(lunchData.lunchStart||"")+" – "+(lunchData.lunchEnd||"");
+  }
 }
 
 function showClockedOut() {
@@ -831,7 +897,10 @@ async function submitClockOut() {
   try {
     const aestTime=new Date().toLocaleTimeString("en-AU",{timeZone:"Australia/Sydney",hour12:false,hour:"2-digit",minute:"2-digit"});
     await apiPost({action:"updateEntry",id:openClockInEntry.itemId,clockOut:aestTime});
-    openClockInEntry=null; showClockedOut(); showAlert(alert,"success","✓ Clocked out at "+aestTime+". Great work!");
+    openClockInEntry=null;
+    resetLunchUI();
+    showClockedOut();
+    showAlert(alert,"success","✓ Clocked out at "+aestTime+". Great work!");
     allEntries=[]; loadTimeSummary();
   } catch(e){showAlert(alert,"error","Could not save. "+e.message);}
   btn.innerHTML="Clock Out Now"; btn.disabled=false;
@@ -869,7 +938,7 @@ async function loadTimeSummary() {
     const wDays=getWorkingDaysInCutoff("current");
     const dailyRate=cutoffRate/wDays;
     const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
-    let totalPay=filtered.reduce((s,e)=>{const h=parseFloat(e.billableHrs||0);return s+(h>0?Math.min(dailyRate,h/7*dailyRate):0);},0);
+    let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
     totalPay=Math.min(totalPay,cutoffRate);
     // Get timesheet status
     if(allTimesheets.length===0){try{const tr=await apiPost({action:"getTimesheets"});allTimesheets=(tr.timesheets||[]).filter(t=>t.sdrName===currentUser.name);}catch(e){}}
@@ -903,8 +972,13 @@ async function loadTimesheet() {
     // Always fetch fresh data so approved meeting hours show immediately
     allEntries = await fetchEntries();
     allTimesheets = [];
-    const tr = await apiPost({action:"getTimesheets"});
+    allMeetings = [];
+    const [tr, mr] = await Promise.all([
+      apiPost({action:"getTimesheets"}),
+      apiPost({action:"getMeetings"})
+    ]);
     allTimesheets = (tr.timesheets||[]).filter(t=>t.sdrName===currentUser.name);
+    allMeetings = (mr.meetings||[]).filter(m=>m.sdrName&&m.sdrName.toLowerCase()===currentUser.name.toLowerCase());
     renderTimesheetGrouped();
   } catch(e){ document.getElementById("timesheet-loading").textContent="Could not load entries."; }
 }
@@ -927,28 +1001,55 @@ function renderTimesheetGrouped() {
     const tsStatus=ts?ts.status:"Not submitted";
     const tsStatusBadge=getTsBadge(tsStatus);
     const totalHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
+    // Get approved meetings for this cutoff's dates
+    const cutoffDates = new Set(entries.map(e=>e.workDate));
+    const cutoffMeetings = allMeetings.filter(m=>m.status==="Approved"&&cutoffDates.has(m.date));
+
     html+=`<div class="cutoff-group">
       <div class="cutoff-group-header">
-        <div><div class="title">${cutoffLabel}</div><div class="meta">${entries.length} entries &nbsp;·&nbsp; ${totalHrs.toFixed(1)} billable hrs</div></div>
+        <div><div class="title">${cutoffLabel}</div><div class="meta">${entries.length} entries &nbsp;·&nbsp; ${totalHrs.toFixed(1)} billable hrs${cutoffMeetings.length>0?" &nbsp;·&nbsp; "+cutoffMeetings.length+" meeting(s)":""}</div></div>
         <div style="display:flex;align-items:center;gap:10px;">${tsStatusBadge}</div>
       </div>
       <div class="cutoff-group-body">
         <div class="table-wrap"><table>
-          <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Actual</th><th>Billable</th><th>Deduction</th><th>Entry Dispute</th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Clock In</th><th>Clock Out</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Dispute</th></tr></thead>
           <tbody>${entries.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
             const actualStr=e.actualStart?(e.actualStart+(e.actualEnd?" → "+e.actualEnd:"")):'<span style="color:var(--muted)">Pending</span>';
             const canEntryDispute=!["Submitted","Approved"].includes(tsStatus)&&e.actualStart&&!["Submitted","Under Review"].includes(e.disputeStatus);
             const disputeCell=canEntryDispute
               ?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Dispute</button>`
               :getDisputeBadge(e.disputeStatus);
-            return`<tr>
+            const lunchStr=e.lunchTaken==="TRUE"
+              ?`<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
+              :'<span style="color:var(--muted);font-size:11px;">None</span>';
+            // Get meetings for this specific date
+            const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
+            const mainRow=`<tr style="border-bottom:${dayMeetings.length>0?'none':'1px solid #f0ece4'};">
               <td><strong>${formatDate(e.workDate)}</strong></td>
+              <td><span class="badge badge-blue" style="font-size:10px;">Work</span></td>
               <td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td>
               <td style="font-size:12px;">${actualStr}</td>
+              <td>${lunchStr}</td>
               <td>${e.billableHrs>0?"<strong>"+parseFloat(e.billableHrs).toFixed(2)+" hrs</strong>":"—"}</td>
               <td>${e.deduction>0?'<span style="color:var(--red)">-'+parseFloat(e.deduction).toFixed(2)+'h</span>':"—"}</td>
               <td style="white-space:nowrap;">${disputeCell}</td>
             </tr>`;
+            const meetingRows=dayMeetings.map((m,mi)=>{
+              const dur=calcDuration(m.startTime,m.endTime);
+              const mHrs=calcMins(m.startTime,m.endTime)/60;
+              return`<tr style="background:rgba(0,194,255,0.04);border-bottom:${mi===dayMeetings.length-1?'1px solid #f0ece4':'none'};">
+                <td style="padding-left:24px;font-size:12px;color:var(--muted);">↳ ${formatDate(m.date)}</td>
+                <td><span class="badge badge-gold" style="font-size:10px;">Meeting</span></td>
+                <td style="font-size:12px;">${m.startTime||"—"}</td>
+                <td style="font-size:12px;">${m.endTime||"—"}</td>
+                <td style="font-size:12px;color:var(--muted);">${m.meetingType}</td>
+                <td>—</td>
+                <td><span style="font-size:12px;color:#0077CC;font-weight:700;">+${mHrs.toFixed(2)} hrs</span></td>
+                <td>—</td>
+                <td><span class="badge badge-green" style="font-size:10px;">✓ Approved</span></td>
+              </tr>`;
+            }).join("");
+            return mainRow+meetingRows;
           }).join("")}</tbody>
         </table></div>`;
     // Cutoff-level dispute (after timesheet submitted)
@@ -1018,6 +1119,15 @@ async function loadPay() {
   if(allEntries.length===0){try{allEntries=await fetchEntries();}catch(e){}}
   renderPay();
 }
+function calcEntryPay(e, dailyRate) {
+  const workHrs = parseFloat(e.billableHrs||0);
+  const lunchHr = e.lunchTaken==="TRUE" ? 1 : 0;
+  const totalHrs = Math.min(8, workHrs + lunchHr); // max 8hrs full day
+  const pay = totalHrs > 0 ? (totalHrs/8) * dailyRate : 0;
+  const deduction = Math.max(0, 8 - totalHrs);
+  return { totalHrs, pay, deduction };
+}
+
 function renderPay(){
   const filtered=filterByCutoff(allEntries,payCutoff).filter(e=>e.clockIn);
   document.getElementById("pay-period-label").textContent="Period: "+getCutoffDisplayLabel(payCutoff);
@@ -1027,8 +1137,8 @@ function renderPay(){
   document.getElementById("ref-cutoff").textContent="AUD $"+cutoffRate.toFixed(2);
   document.getElementById("ref-daily").textContent="AUD $"+dailyRate.toFixed(2);
   const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
-  const totalDed=filtered.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
-  let totalPay=filtered.reduce((s,e)=>{const h=parseFloat(e.billableHrs||0);return s+(h>0?Math.min(dailyRate,h/7*dailyRate):0);},0);
+  const totalDed=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).deduction,0);
+  let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
   totalPay=Math.min(totalPay,cutoffRate);
   document.getElementById("pay-days").textContent=filtered.length;
   document.getElementById("pay-hours").textContent=totalHrs.toFixed(2);
@@ -1038,9 +1148,15 @@ function renderPay(){
   body.innerHTML=filtered.length===0
     ?'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No entries yet.</td></tr>'
     :filtered.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
-        const h=parseFloat(e.billableHrs||0),ded=parseFloat(e.deduction||0);
-        const pay=h>0?Math.min(dailyRate,h/7*dailyRate):0;
-        return`<tr><td>${formatDate(e.workDate)}</td><td>${h.toFixed(2)} hrs</td><td>${ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—"}</td><td><strong>$${pay.toFixed(2)}</strong></td><td>${getDisputeBadge(e.disputeStatus)}</td></tr>`;
+        const {totalHrs:th, pay, deduction:ded} = calcEntryPay(e, dailyRate);
+        const lunchNote = e.lunchTaken==="TRUE" ? '<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>' : "";
+        return`<tr>
+          <td>${formatDate(e.workDate)}</td>
+          <td>${parseFloat(e.billableHrs||0).toFixed(2)} hrs${lunchNote}</td>
+          <td>${ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—"}</td>
+          <td><strong>$${pay.toFixed(2)}</strong></td>
+          <td>${getDisputeBadge(e.disputeStatus)}</td>
+        </tr>`;
       }).join("");
   document.getElementById("pay-loading").style.display="none";
   document.getElementById("pay-content").style.display="block";
@@ -1294,7 +1410,7 @@ function renderSubmitPage(){
   const wDays=getWorkingDaysInCutoff(submitCutoffVal),dailyRate=cutoffRate/wDays;
   const totalHrs=filtered.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
   const totalDed=filtered.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
-  let totalPay=filtered.reduce((s,e)=>{const h=parseFloat(e.billableHrs||0);return s+(h>0?Math.min(dailyRate,h/7*dailyRate):0);},0);
+  let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
   totalPay=Math.min(totalPay,cutoffRate);
   let statusHtml="";
   if(!existing&&filtered.length>0){
@@ -1361,7 +1477,7 @@ async function submitTimesheet(){
     const filtered=filterByCutoff(allEntries,submitCutoffVal).filter(e=>e.clockIn);
     const monthlyRate=currentUser.rate||0,cutoffRate=monthlyRate/2;
     const wDays=getWorkingDaysInCutoff(submitCutoffVal),dailyRate=cutoffRate/wDays;
-    let totalPay=filtered.reduce((s,e)=>{const h=parseFloat(e.billableHrs||0);return s+(h>0?Math.min(dailyRate,h/7*dailyRate):0);},0);
+    let totalPay=filtered.reduce((s,e)=>s+calcEntryPay(e,dailyRate).pay,0);
     totalPay=Math.min(totalPay,cutoffRate);
     await apiPost({action:"addTimesheet",sdrName:currentUser.name,email:currentUser.email,cutoffKey,cutoffLabel:getCutoffDisplayLabel(submitCutoffVal),totalDays:filtered.length,totalPay:totalPay.toFixed(2),status:"Pending",disputeNotes:"",adminNote:""});
     showAlert(alert,"success","✓ Timesheet submitted for approval!");

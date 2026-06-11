@@ -401,7 +401,7 @@ tr:hover td { background: #faf8f4; }
         <div id="entries-empty" class="empty-block" style="display:none;"><div class="icon">📭</div><p>No entries match your filters.</p></div>
         <div class="table-wrap" id="entries-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>Employee</th><th>Date</th><th>Submitted Times</th><th>Actual (JustCall)</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th><th style="text-align:center">Actions</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Submitted Times</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Dispute</th><th style="text-align:center">Actions</th></tr></thead>
             <tbody id="entries-body"></tbody>
           </table>
         </div>
@@ -538,6 +538,12 @@ tr:hover td { background: #faf8f4; }
       </div>
       <button class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="autoCompute()">⚡ Auto-compute from times</button>
     </div>
+    <hr class="modal-divider">
+    <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">🍽️ Lunch (admin edit)</div>
+    <div class="two-col">
+      <div class="field-group"><label>Lunch Start</label><input type="time" id="em-lunch-start" /></div>
+      <div class="field-group"><label>Lunch End</label><input type="time" id="em-lunch-end" /></div>
+    </div>
     <div class="field-group"><label>Admin Notes</label><textarea id="em-admin-notes" rows="2" placeholder="Optional notes…"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="saveEntry()" id="btn-save-entry">Save Entry</button>
@@ -646,22 +652,54 @@ function renderEntriesTable() {
   if(filteredEntries.length===0){document.getElementById("entries-empty").style.display="block";document.getElementById("entries-table-wrap").style.display="none";return;}
   document.getElementById("entries-empty").style.display="none";
   document.getElementById("entries-table-wrap").style.display="block";
-  document.getElementById("entries-body").innerHTML = filteredEntries.map(e => {
+  // Group entries by date+employee to attach meeting sub-rows
+  const rows = [];
+  filteredEntries.forEach(e => {
     const isPending = e.clockIn && !e.actualStart;
     const submitted = (e.clockIn||"—") + " → " + (e.clockOut||"—");
     const actual = e.actualStart ? ("<strong>"+e.actualStart+"</strong>" + (e.actualEnd?" → "+e.actualEnd:"")) : '<span class="badge badge-amber">Pending</span>';
-    return `<tr>
+    const lunchStr = e.lunchTaken==="TRUE"
+      ? `<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
+      : '<span style="color:var(--muted);font-size:11px;">None</span>';
+    // Main work row
+    rows.push(`<tr>
       <td><strong>${e.sdrName||"—"}</strong></td>
       <td style="white-space:nowrap">${formatDate(e.workDate)}</td>
+      <td><span class="badge badge-blue" style="font-size:10px;">Work</span></td>
       <td style="white-space:nowrap;font-size:12px;">${submitted}</td>
       <td style="white-space:nowrap;font-size:12px;">${actual}</td>
+      <td>${lunchStr}</td>
       <td>${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(2)} hrs</strong>`:"—"}</td>
       <td>${e.deduction>0?`<span style="color:var(--red)">-${parseFloat(e.deduction).toFixed(2)}</span>`:"—"}</td>
       <td>${e.dailyPay>0?`<strong>$${parseFloat(e.dailyPay).toFixed(2)}</strong>`:"—"}</td>
       <td>${getDisputeBadge(e.disputeStatus)}</td>
-      <td style="text-align:center"><button class="btn btn-secondary btn-sm" onclick="openEditModal('${e.id}')">${isPending?"✏️ Enter Times":"✏️ Edit"}</button></td>
-    </tr>`;
-  }).join("");
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="openEditModal('${e.id}')">${isPending?"✏️ Enter Times":"✏️ Edit"}</button>
+      </td>
+    </tr>`);
+    // Meeting sub-rows for this employee+date
+    const dayMeetings = allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===e.sdrName&&m.date===e.workDate);
+    dayMeetings.forEach(m => {
+      const dur = calcDuration(m.startTime, m.endTime);
+      const mHrs = calcMins(m.startTime, m.endTime)/60;
+      rows.push(`<tr style="background:rgba(0,150,255,0.04);">
+        <td style="padding-left:24px;font-size:12px;color:var(--muted);">↳ ${m.sdrName}</td>
+        <td style="font-size:12px;color:var(--muted);">${formatDate(m.date)}</td>
+        <td><span class="badge badge-gold" style="font-size:10px;">Meeting</span></td>
+        <td style="font-size:12px;">${m.startTime||"—"} → ${m.endTime||"—"}</td>
+        <td style="font-size:12px;color:var(--muted);">${m.meetingType} (${dur})</td>
+        <td>—</td>
+        <td><span style="font-size:12px;color:#0077CC;font-weight:700;">+${mHrs.toFixed(2)} hrs</span></td>
+        <td>—</td>
+        <td>—</td>
+        <td><span class="badge badge-green" style="font-size:10px;">✓ Approved</span></td>
+        <td style="text-align:center;white-space:nowrap">
+          <button class="btn btn-secondary btn-sm" onclick="openMeetingEditModal('${m.id}')">✏️ Edit</button>
+        </td>
+      </tr>`);
+    });
+  });
+  document.getElementById("entries-body").innerHTML = rows.join("");
 }
 
 function openEditModal(id) {
@@ -677,6 +715,8 @@ function openEditModal(id) {
   document.getElementById("em-deduction").value = e.deduction||"";
   document.getElementById("em-daily-pay").value = e.dailyPay||"";
   document.getElementById("em-admin-notes").value = e.adminNotes||"";
+  document.getElementById("em-lunch-start").value = e.lunchStart ? toTimeInput(e.lunchStart) : "";
+  document.getElementById("em-lunch-end").value = e.lunchEnd ? toTimeInput(e.lunchEnd) : "";
   hideAlert(document.getElementById("alert-edit"));
   document.getElementById("edit-modal").classList.add("open");
 }
@@ -718,7 +758,7 @@ async function saveEntry() {
     const deduction=parseFloat(document.getElementById("em-deduction").value)||0;
     const pay=parseFloat(document.getElementById("em-daily-pay").value)||0;
     const notes=document.getElementById("em-admin-notes").value;
-    await apiPost({action:"updateEntry",id:editItemId,actualStart:start,actualEnd:end,billableHrs:billable,deduction,dailyPay:pay,adminNotes:notes});
+    await apiPost({action:"updateEntry",id:editItemId,actualStart:start,actualEnd:end,billableHrs:billable,deduction,dailyPay:pay,adminNotes:notes,lunchStart:lunchStart||undefined,lunchEnd:lunchEnd||undefined,lunchTaken:lunchStart?"TRUE":undefined});
     const idx=allEntries.findIndex(x=>x.id==editItemId);
     if(idx!==-1) allEntries[idx]={...allEntries[idx],actualStart:start,actualEnd:end,billableHrs:billable,deduction,dailyPay:pay,adminNotes:notes};
     showAlert(alert,"success","✓ Entry saved.");
@@ -857,7 +897,10 @@ async function renderPayroll(){
     const sdrDailyRate=sdrCutoffRate/sdrWorkingDays;
     const sdrHrs=entries.reduce((s,e)=>s+parseFloat(e.billableHrs||0),0);
     const sdrDed=entries.reduce((s,e)=>s+parseFloat(e.deduction||0),0);
-    const sdrPay=Math.min(sdrCutoffRate, entries.reduce((s,e)=>{const hrs=parseFloat(e.billableHrs||0);return s+(hrs>0?Math.min(sdrDailyRate,hrs/7*sdrDailyRate):0);},0));
+    const sdrPay=Math.min(sdrCutoffRate, entries.reduce((s,e)=>{
+      const wh=parseFloat(e.billableHrs||0); const lh=e.lunchTaken==="TRUE"?1:0;
+      const th=Math.min(8,wh+lh); return s+(th>0?(th/8)*sdrDailyRate:0);
+    },0));
     // Find approved timesheet for this SDR
     const approvedTs=allTimesheets.find(t=>t.sdrName===name&&t.status==="Approved");
     html+=`<div class="card">
@@ -910,8 +953,10 @@ async function renderPayroll(){
           </tr></thead>
           <tbody>${entries.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
             const hrs=parseFloat(e.billableHrs||0);
-            const ded=parseFloat(e.deduction||0);
-            const dp=hrs>0?Math.min(sdrDailyRate,hrs/7*sdrDailyRate):0;
+            const lh=e.lunchTaken==="TRUE"?1:0;
+            const th=Math.min(8,hrs+lh);
+            const dp=th>0?(th/8)*sdrDailyRate:0;
+            const ded=Math.max(0,8-th);
             return`<tr style="border-bottom:1px solid #f0f4f8;">
               <td style="padding:10px 12px;"><strong>${formatDate(e.workDate)}</strong></td>
               <td style="padding:10px 12px;font-size:12px;">${e.clockIn||"—"} → ${e.clockOut||"—"}</td>
@@ -1134,24 +1179,21 @@ async function approveMeeting(id, sdrName, durationMins) {
       if (entry) {
         const addHrs = durationMins / 60;
         const currentBillable = parseFloat(entry.billableHrs || 0);
-        const newBillable = Math.min(parseFloat((currentBillable + addHrs).toFixed(2)), 7); // cap at 7hrs
-
-        // Recalculate deduction based on new billable hours
-        const newDeduction = Math.max(0, parseFloat((7 - newBillable).toFixed(2)));
-
-        // Recalculate daily pay using the user's rate
-        const userRate = (await apiPost({action:"getUsers"})).users?.find(u=>u.name===sdrName);
+        const newBillable = parseFloat(Math.min(7, currentBillable + addHrs).toFixed(2));
+        // Recalculate using 8hr day formula (work + meetings + 1hr lunch)
+        const lunchHr = entry.lunchTaken==="TRUE" ? 1 : 0;
+        const totalHrs = Math.min(8, newBillable + lunchHr);
+        const userRates = (await apiPost({action:"getUsers"})).users||[];
+        const userRate = userRates.find(u=>u.name===sdrName);
         const monthlyRate = parseFloat(userRate?.rate||0);
-        const cutoffRate = monthlyRate / 2;
-        // Estimate working days (use 11 as default)
-        const dailyRate = cutoffRate / 11;
-        const newDailyPay = newBillable > 0 ? Math.min(dailyRate, (newBillable/7) * dailyRate) : 0;
-
+        const dailyRate = (monthlyRate/2) / 11;
+        const newDailyPay = (totalHrs/8) * dailyRate;
+        const newDeduction = Math.max(0, 8 - totalHrs);
         await apiPost({
           action: "updateEntry",
           id: entry.id,
           billableHrs: newBillable,
-          deduction: newDeduction,
+          deduction: parseFloat(newDeduction.toFixed(2)),
           dailyPay: parseFloat(newDailyPay.toFixed(2))
         });
 
@@ -1527,5 +1569,22 @@ function updateIncentiveTotal(tsId) {
   if(grandEl) grandEl.textContent = "AUD $"+(basePay+total).toFixed(2);
 }
 </script>
+
+<!-- MEETING EDIT MODAL -->
+<div class="modal-overlay" id="meeting-edit-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Meeting Times</div>
+    <div class="modal-sub" id="mem-sub">—</div>
+    <div id="alert-meeting-edit" class="alert"></div>
+    <div class="two-col">
+      <div class="field-group"><label>Start Time</label><input type="time" id="mem-start" /></div>
+      <div class="field-group"><label>End Time</label><input type="time" id="mem-end" /></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveMeetingEdit()" id="btn-save-meeting-edit">Save</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('meeting-edit-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
