@@ -271,7 +271,7 @@ let allEntries = [];
 async function mondayQuery(gql, variables = {}) {
   const response = await fetch("https://api.monday.com/v2", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjE3NjcxMTc1MiwiYWFpIjoxMSwidWlkIjoxMTQ5MTY1OSwiaWFkIjoiMjAyMi0wOC0yMlQwODowODoxNy4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6Mzc0NjUwMywicmduIjoidXNlMSJ9.3jKP406YuhzYN0IEAx9nJNf9aC5VX4ZhOtvJiWxyUy4", "API-Version": "2024-01" },
+    headers: { "Content-Type": "application/json", "Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjY2OTY2Mzc4OSwiYWFpIjoxMSwidWlkIjoxMTQ5MTY1OSwiaWFkIjoiMjAyNi0wNi0xMVQwNToxMjozNy4yNDNaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6Mzc0NjUwMywicmduIjoidXNlMSJ9.O8kKJDQ_Hb2sXg5vOpSplclTs4OHLCLjsfr1GYlx-Tk", "API-Version": "2024-01" },
     body: JSON.stringify({ query: gql, variables })
   });
   if (!response.ok) throw new Error("HTTP " + response.status);
