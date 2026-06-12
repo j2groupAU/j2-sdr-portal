@@ -195,8 +195,8 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(1
 /* ── TABLE ── */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { background: linear-gradient(135deg, #EEF4FF 0%, #E4EEFF 100%); padding: 9px 12px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); border-bottom: 1px solid rgba(77,159,255,0.15); white-space: nowrap; }
-td { padding: 11px 12px; border-bottom: 1px solid #f0ece4; color: var(--text); vertical-align: middle; }
+th { background: linear-gradient(135deg, #EEF4FF 0%, #E4EEFF 100%); padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); border-bottom: 1px solid rgba(77,159,255,0.15); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid #f0ece4; color: var(--text); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #faf8f4; }
 
@@ -388,7 +388,7 @@ tr:hover td { background: #faf8f4; }
       </div>
       <div id="alert-entries" class="alert"></div>
       <div class="filter-bar">
-        <div class="field-group"><label>Filter by Employee</label><select id="filter-sdr" onchange="applyFilters()"><option value="">All SDRs</option></select></div>
+        <div class="field-group"><label>Filter by Employee</label><select id="filter-sdr" onchange="applyFilters()"><option value="">All Employees</option></select></div>
         <div class="field-group"><label>Cutoff Period</label><select id="filter-cutoff" onchange="applyFilters()"><option value="">All Periods</option><option value="current">Current Period</option><option value="prev">Previous Period</option></select></div>
         <div class="field-group"><label>Status</label><select id="filter-status" onchange="applyFilters()"><option value="">All</option><option value="pending">Pending JustCall entry</option><option value="complete">Complete</option></select></div>
       </div>
@@ -397,7 +397,7 @@ tr:hover td { background: #faf8f4; }
         <div id="entries-empty" class="empty-block" style="display:none;"><div class="icon">📭</div><p>No entries match your filters.</p></div>
         <div class="table-wrap" id="entries-table-wrap" style="display:none;">
           <table>
-            <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Submitted Times</th><th>Actual / Time</th><th>Lunch</th><th>Billable</th><th>Deduction</th><th>Daily Pay</th><th>Request Review</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Date</th><th>Clock In/Out</th><th>Actual (JustCall)</th><th>Lunch</th><th>Billable</th><th>Ded.</th><th>Pay</th><th>Status</th></tr></thead>
             <tbody id="entries-body"></tbody>
           </table>
         </div>
@@ -471,7 +471,7 @@ tr:hover td { background: #faf8f4; }
       </div>
       <div id="alert-leave" class="alert"></div>
       <div class="filter-bar">
-        <div class="field-group"><label>Filter by Employee</label><select id="leave-filter-sdr" onchange="renderLeave()"><option value="">All SDRs</option></select></div>
+        <div class="field-group"><label>Filter by Employee</label><select id="leave-filter-sdr" onchange="renderLeave()"><option value="">All Employees</option></select></div>
         <div class="field-group"><label>Status</label><select id="leave-filter-status" onchange="renderLeave()"><option value="">All</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></div>
       </div>
       <div id="leave-loading" class="loading-block">Loading leave requests…</div>
@@ -625,7 +625,7 @@ function populateSdrFilter() {
   const names = [...new Set(allEntries.map(e=>e.sdrName).filter(Boolean))].sort();
   const sel = document.getElementById("filter-sdr");
   const cur = sel.value;
-  sel.innerHTML = '<option value="">All SDRs</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join("");
+  sel.innerHTML = '<option value="">All Employees</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join("");
   sel.value = cur;
 }
 
@@ -660,16 +660,15 @@ function renderEntriesTable() {
       : '<span style="color:var(--muted);font-size:11px;">None</span>';
     // Main work row
     rows.push(`<tr>
-      <td><strong>${e.sdrName||"—"}</strong></td>
-      <td style="white-space:nowrap">${formatDate(e.workDate)}</td>
-      <td><span class="badge badge-blue" style="font-size:10px;">Work</span></td>
-      <td style="white-space:nowrap;font-size:12px;">${submitted}</td>
-      <td style="white-space:nowrap;font-size:12px;">${actual}</td>
-      <td>${lunchStr}</td>
-      <td>${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(2)} hrs</strong>`:"—"}</td>
-      <td>${e.deduction>0?`<span style="color:var(--red)">-${parseFloat(e.deduction).toFixed(2)}</span>`:"—"}</td>
-      <td>${e.dailyPay>0?`<strong>$${parseFloat(e.dailyPay).toFixed(2)}</strong>`:"—"}</td>
-      <td style="white-space:nowrap">${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="margin-left:4px;" onclick="openEditModal('${e.id}')">${isPending?"✏️":"✏️"}</button></td>
+      <td><strong style="font-size:12px;">${e.sdrName||"—"}</strong></td>
+      <td style="font-size:12px;white-space:nowrap">${formatDate(e.workDate)}</td>
+      <td style="font-size:12px;white-space:nowrap">${e.clockIn||"—"} → ${e.clockOut||"—"}</td>
+      <td style="font-size:12px;white-space:nowrap">${e.actualStart?e.actualStart+(e.actualEnd?" → "+e.actualEnd:""):'<span class="badge badge-amber" style="font-size:10px;">Pending</span>'}</td>
+      <td style="font-size:11px;">${lunchStr}</td>
+      <td style="font-size:12px;">${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(1)}h</strong>`:"—"}</td>
+      <td style="font-size:12px;">${e.deduction>0?`<span style="color:var(--red)">-${parseFloat(e.deduction).toFixed(1)}</span>`:"—"}</td>
+      <td style="font-size:12px;">${e.dailyPay>0?`<strong>$${parseFloat(e.dailyPay).toFixed(0)}</strong>`:"—"}</td>
+      <td style="white-space:nowrap">${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;" onclick="openEditModal('${e.id}')">${isPending?"Enter":"Edit"}</button></td>
     </tr>`);
     // Meeting sub-rows for this employee+date
     // Track shown meetings per employee+date to avoid duplicates
@@ -1421,7 +1420,7 @@ async function loadLeave() {
     const names=[...new Set(allLeaves.map(l=>l.sdrName).filter(Boolean))].sort();
     const sel=document.getElementById("leave-filter-sdr");
     const cur=sel.value;
-    sel.innerHTML='<option value="">All SDRs</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join("");
+    sel.innerHTML='<option value="">All Employees</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join("");
     sel.value=cur;
     renderLeave();
     updateLeaveCount();
