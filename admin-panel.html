@@ -690,7 +690,11 @@ function renderEntriesTable() {
       <td style="font-size:12px;">${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(1)}h</strong>`:"—"}</td>
       <td style="font-size:12px;">${e.deduction>0?`<span style="color:var(--red)">-${parseFloat(e.deduction).toFixed(1)}</span>`:"—"}</td>
       <td style="font-size:12px;">${e.dailyPay>0?`<strong>$${parseFloat(e.dailyPay).toFixed(0)}</strong>`:"—"}</td>
-      <td style="white-space:nowrap">${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;" onclick="openEditModal('${e.id}')">${isPending?"Enter":"Edit"}</button></td>
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+        ${getDisputeBadge(e.disputeStatus)}
+        <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;" onclick="openEditModal('${e.id}')">${isPending?"Enter":"Edit"}</button>
+        <button class="btn btn-sm" style="padding:3px 8px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteEntry('${e.id}','${e.sdrName}','${formatDate(e.workDate)}')">🗑</button>
+      </td>
     </tr>`);
     // Meeting sub-rows for this employee+date
     // Track shown meetings per employee+date to avoid duplicates
@@ -1382,6 +1386,10 @@ function renderTimesheets() {
           <td><strong>$${grand.toFixed(2)}</strong></td>
           <td>${getTsBadge(t.status)}</td>
           <td style="font-size:12px;color:var(--muted);">${t.adminNote||"—"}</td>
+          <td style="white-space:nowrap;">
+            ${t.status==="Approved"?`<button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:6px;cursor:pointer;" onclick="reopenTimesheet('${t.id}','${t.sdrName}')">↩ Reopen</button>`:""}
+            <button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;margin-left:4px;" onclick="deleteTimesheet('${t.id}','${t.sdrName}')">🗑 Delete</button>
+          </td>
         </tr>`;
       }).join("")}</tbody>
     </table></div></div>`;

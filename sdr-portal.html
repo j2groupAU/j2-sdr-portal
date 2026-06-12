@@ -441,7 +441,7 @@ tr:hover td { background: #faf8f4; }
       </div>
 
       <!-- Quick Meeting Log (only when clocked in) -->
-      <div class="card" id="quick-meeting-card" style="display:none;">
+      <div class="card" id="quick-meeting-card">
         <div class="card-title"><div class="card-icon">📅</div> Log Meeting</div>
         <div class="two-col">
           <div class="field-group">
@@ -845,7 +845,7 @@ function showClockedOut() {
   document.getElementById("clock-status-text").textContent="You are currently clocked out.";
   document.getElementById("clock-card-in").style.display="block";
   document.getElementById("clock-card-out").style.display="none";
-  document.getElementById("quick-meeting-card").style.display="none";
+  document.getElementById("quick-meeting-card").style.display="block";
 }
 
 async function submitClockIn() {
@@ -1621,6 +1621,18 @@ window.addEventListener("DOMContentLoaded", async function() {
     localStorage.removeItem("j2hub_user");
   }
 });
+
+async function resubmitTimesheet(tsId) {
+  const alert = document.getElementById("alert-submit");
+  const btn = document.getElementById("btn-submit-ts");
+  if(btn){ btn.innerHTML='<span class="spinner"></span>'; btn.disabled=true; }
+  try {
+    await apiPost({ action: "updateTimesheet", id: tsId, status: "Pending", adminNote: "", disputeNotes: "" });
+    showAlert(alert, "success", "✓ Timesheet resubmitted for approval!");
+    allTimesheets = []; loadSubmitPage();
+  } catch(e) { showAlert(alert, "error", "Could not resubmit: " + e.message); }
+  if(btn){ btn.innerHTML="📤 Resubmit Timesheet"; btn.disabled=false; }
+}
 </script>
 </body>
 </html>
