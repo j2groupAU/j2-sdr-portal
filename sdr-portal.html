@@ -626,6 +626,7 @@ async function doLogin() {
     document.getElementById("app").style.display="block";
     document.getElementById("user-chip").textContent = currentUser.name;
     loading.style.display="none"; btn.disabled=false; btn.innerHTML="Sign In to J2 Hub";
+    localStorage.setItem("j2hub_user", JSON.stringify(currentUser));
     initApp();
   } catch(e) {
     err.style.display="block"; err.textContent="Could not connect. Please try again.";
@@ -635,6 +636,7 @@ async function doLogin() {
 document.addEventListener("keydown", e => { if(e.key==="Enter" && document.getElementById("login-screen").style.display!=="none") doLogin(); });
 function doLogout() {
   currentUser=null; openClockInEntry=null; allEntries=[];
+  localStorage.removeItem("j2hub_user");
   document.getElementById("login-screen").style.display="flex";
   document.getElementById("app").style.display="none";
   document.getElementById("login-name").value=""; document.getElementById("login-password").value="";
@@ -1566,6 +1568,29 @@ function calcEntryPay(e, dailyRate) {
   const deduction = Math.max(0, 8 - totalHrs);
   return { totalHrs, pay, deduction };
 }
+
+// ── AUTO-LOGIN from saved session ──
+window.addEventListener("DOMContentLoaded", async function() {
+  const saved = localStorage.getItem("j2hub_user");
+  if (saved) {
+    try {
+      const user = JSON.parse(saved);
+      // Re-verify user still exists
+      const result = await apiPost({ action: "getUsers" });
+      const users = result.users || [];
+      const valid = users.find(u => u.id === user.id && u.name === user.name);
+      if (valid) {
+        currentUser = { id: valid.id, name: valid.name, email: valid.email||"", rate: parseFloat(valid.rate)||0 };
+        document.getElementById("login-screen").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        document.getElementById("user-chip").textContent = currentUser.name;
+        initApp();
+        return;
+      }
+    } catch(e) {}
+    localStorage.removeItem("j2hub_user");
+  }
+});
 </script>
 </body>
 </html>
