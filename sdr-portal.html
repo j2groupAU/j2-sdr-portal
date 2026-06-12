@@ -1170,7 +1170,7 @@ function renderPayslips(timesheets) {
           <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:1.5px solid var(--border);">Date</th>
           <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:1.5px solid var(--border);">Billable Hrs</th>
           <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:1.5px solid var(--border);">Deduction</th>
-          <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:1.5px solid var(--border);">Daily Pay</th>
+          
         </tr></thead>
         <tbody>${entries.length===0?'<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--muted);">No entries</td></tr>':entries.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
           const h=parseFloat(e.billableHrs||0),ded=parseFloat(e.deduction||0);
@@ -1380,7 +1380,7 @@ function renderSubmitPage(){
     const style=colors[existing.status]||"#f8fafc;border-color:var(--border);color:var(--muted)";
     const icon=icons[existing.status]||"";
     let msg=icon+" Timesheet "+existing.status;
-    if(existing.status==="Approved"){const inc=parseFloat(existing.totalIncentive||0);const grand=parseFloat(existing.grandTotal||totalPay);msg+=" — Total pay: AUD $"+grand.toFixed(2)+(inc>0?" (Base $"+parseFloat(existing.totalPay||0).toFixed(2)+" + Incentive $"+inc.toFixed(2)+")":"");}
+    if(existing.status==="Approved") msg+=" — Payment will be processed on the due date.";
     if(existing.status==="Rejected"&&existing.adminNote) msg+=" — Note: "+existing.adminNote;
     statusHtml=`<div style="background:${style};border:1.5px solid;padding:14px 18px;border-radius:10px;margin-bottom:16px;font-size:14px;font-weight:700;">${msg}</div>`;
     if(["Pending","Rejected"].includes(existing.status)){
@@ -1400,17 +1400,17 @@ function renderSubmitPage(){
       <div class="mini-grid">
         <div class="mini-card"><div class="lbl">Days</div><div class="val">${filtered.length}</div></div>
         <div class="mini-card"><div class="lbl">Billable Hrs</div><div class="val gold">${totalHrs.toFixed(2)}</div></div>
-        <div class="mini-card"><div class="lbl">Deductions</div><div class="val red">-${totalDed.toFixed(2)}h</div></div>
+
       </div>
     </div>
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1.5px solid var(--border);"><div class="card-title" style="margin-bottom:0;">Entries</div></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Billable</th><th>Deduction</th></tr></thead>
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Billable</th><th>Deduction</th><th>Status</th></tr></thead>
         <tbody>${filtered.length===0?'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>':filtered.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
           const h=parseFloat(e.billableHrs||0),ded=parseFloat(e.deduction||0);
-          const pay=h>0?Math.min(dailyRate,h/7*dailyRate):0;
-          return`<tr><td>${formatDate(e.workDate)}</td><td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td><td>${h.toFixed(2)} hrs</td><td>${ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—"}</td><td><strong>$${pay.toFixed(2)}</strong></td></tr>`;
+          const entryStatus=e.actualStart?'<span style="color:#15803d;font-weight:700;">✓ Complete</span>':'<span style="color:#92400e;">Pending</span>';
+          return`<tr><td>${formatDate(e.workDate)}</td><td>${e.clockIn||'-'}</td><td>${e.clockOut||'-'}</td><td>${h>0?h.toFixed(2)+' hrs':'-'}</td><td>${ded>0?'<span style="color:#dc2626">-'+ded.toFixed(2)+'h</span>':'-'}</td><td>${entryStatus}</td></tr>`;
         }).join("")}</tbody>
       </table></div>
     </div>`;
