@@ -384,7 +384,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page active" id="page-entries" style="width:100%;">
       <div class="page-header">
         <div class="page-header-left"><h2>All Time Entries</h2><p>Enter JustCall actual times and compute billable hours and pay per entry.</p></div>
-        <button class="btn btn-primary" onclick="loadAllEntries()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAllEntries()">↻ Refresh</button>
       </div>
       <div id="alert-entries" class="alert"></div>
       <div class="filter-bar">
@@ -408,7 +408,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-disputes">
       <div class="page-header">
         <div class="page-header-left"><h2>Disputes</h2><p>Review and resolve disputes on their time entries.</p></div>
-        <button class="btn btn-primary" onclick="loadAllEntries()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAllEntries()">↻ Refresh</button>
       </div>
       <div id="alert-disputes" class="alert"></div>
       <div id="disputes-loading" class="loading-block">Loading disputes…</div>
@@ -420,7 +420,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-payroll">
       <div class="page-header">
         <div class="page-header-left"><h2>Payroll Summary</h2><p>Cutoff-period pay summary per employee for processing.</p></div>
-        <button class="btn btn-primary" onclick="loadAllEntries()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAllEntries()">↻ Refresh</button>
       </div>
       <div class="cutoff-selector">
         <button class="cutoff-btn active" onclick="selectPayrollCutoff('current')" id="pcobtn-current">Current Period</button>
@@ -434,7 +434,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-users">
       <div class="page-header">
         <div class="page-header-left"><h2>Manage Users</h2><p>Add or remove portal accounts. Changes take effect immediately.</p></div>
-        <button class="btn btn-primary" onclick="loadUsers()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadUsers()">↻ Refresh</button>
       </div>
       <div id="alert-users" class="alert"></div>
       <div class="card">
@@ -467,7 +467,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-leave">
       <div class="page-header">
         <div class="page-header-left"><h2>Leave Requests</h2><p>Review and approve leave. Choose paid or unpaid when approving.</p></div>
-        <button class="btn btn-primary" onclick="loadLeave()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadLeave()">↻ Refresh</button>
       </div>
       <div id="alert-leave" class="alert"></div>
       <div class="filter-bar">
@@ -483,7 +483,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-timesheets">
       <div class="page-header">
         <div class="page-header-left"><h2>Timesheet Approvals</h2><p>Review and approve Timesheet submissions per cutoff period. Only approved timesheets are included in payroll.</p></div>
-        <button class="btn btn-primary" onclick="loadTimesheets()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadTimesheets()">↻ Refresh</button>
       </div>
       <div id="alert-timesheets" class="alert"></div>
       <div class="cutoff-selector">
@@ -500,7 +500,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-meetings">
       <div class="page-header">
         <div class="page-header-left"><h2>Meeting Approvals</h2><p>Review and approve Meeting submissions. Approved meetings add to their billable hours.</p></div>
-        <button class="btn btn-primary" onclick="loadMeetings()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadMeetings()">↻ Refresh</button>
       </div>
       <div id="alert-meetings" class="alert"></div>
       <div id="meetings-loading" class="loading-block">Loading meetings…</div>
@@ -597,10 +597,17 @@ function doLogin() {
   document.getElementById("login-error").style.display="none";
   document.getElementById("login-screen").style.display="none";
   document.getElementById("app").style.display="block";
+  localStorage.setItem("j2hub_admin_session", "true");
   loadAllEntries();
 }
 document.addEventListener("keydown", e => { if(e.key==="Enter"&&document.getElementById("login-screen").style.display!=="none") doLogin(); });
-function doLogout() { document.getElementById("login-screen").style.display="flex"; document.getElementById("app").style.display="none"; document.getElementById("login-password").value=""; allEntries=[]; }
+function doLogout() {
+  localStorage.removeItem("j2hub_admin_session");
+  document.getElementById("login-screen").style.display="flex";
+  document.getElementById("app").style.display="none";
+  document.getElementById("login-password").value="";
+  allEntries=[];
+}
 
 async function apiPost(payload) {
   const res = await fetch(API, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(payload) });
@@ -1034,6 +1041,11 @@ function switchTab(tab){
   document.getElementById("page-"+tab).classList.add("active");
   document.getElementById("tab-"+tab).classList.add("active");
   if(tab==="users") loadUsers();
+  if(tab==="leave") loadLeave();
+  if(tab==="meetings") loadMeetings();
+  if(tab==="timesheets") loadTimesheets();
+  if(tab==="payroll") renderPayroll();
+  if(tab==="disputes") renderDisputes();
 }
 
 function filterByCutoff(entries,cutoff){

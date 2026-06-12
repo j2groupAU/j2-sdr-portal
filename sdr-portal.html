@@ -466,7 +466,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-timesheet">
       <div class="page-header">
         <div><h2>My Timesheet</h2></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadTimesheet()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadTimesheet()">↻ Refresh</button>
       </div>
       <div id="alert-timesheet" class="alert"></div>
       <div id="timesheet-loading" class="loading-block">Loading your records…</div>
@@ -477,7 +477,7 @@ tr:hover td { background: #faf8f4; }
     <div class="page" id="page-payslip">
       <div class="page-header">
         <div><h2>Payslip</h2><p>Only shows approved timesheets. Downloadable as PDF.</p></div>
-        <button class="btn btn-secondary btn-sm" onclick="loadPayslip()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadPayslip()">↻ Refresh</button>
       </div>
       <div id="payslip-loading" class="loading-block">Loading payslips…</div>
       <div id="payslip-list" style="display:none;"></div>
@@ -511,7 +511,7 @@ tr:hover td { background: #faf8f4; }
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
           <div class="card-title" style="margin-bottom:0;">My Submissions</div>
-          <button class="btn btn-secondary btn-sm" onclick="loadMeetings()">↻ Refresh</button>
+          <button class="btn-refresh" onclick="loadMeetings()">↻ Refresh</button>
         </div>
         <div id="meetings-loading" class="loading-block">Loading…</div>
         <div id="meetings-empty" class="empty-block" style="display:none;"><div class="eicon">📭</div><p>No meeting submissions yet.</p></div>
@@ -559,7 +559,7 @@ tr:hover td { background: #faf8f4; }
       <div class="card" style="padding:0;overflow:hidden;">
         <div style="padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
           <div class="card-title" style="margin-bottom:0;">My Leave Requests</div>
-          <button class="btn btn-secondary btn-sm" onclick="loadLeave()">↻ Refresh</button>
+          <button class="btn-refresh" onclick="loadLeave()">↻ Refresh</button>
         </div>
         <div id="leave-loading" class="loading-block">Loading…</div>
         <div id="leave-empty" class="empty-block" style="display:none;"><div class="eicon">🏖️</div><p>No leave requests yet.</p></div>
