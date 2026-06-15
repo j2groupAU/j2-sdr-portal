@@ -1010,13 +1010,13 @@ function renderTimesheetGrouped() {
             // Work Hours = phone hours + meeting hours + 1hr lunch (capped at 8h)
             const meetHrsTotal=dayMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
             const lunchAdd=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")?1:0;
-            const displayBillable = parseFloat(e.billableHrs||0);
-            const billableDisplay = displayBillable>0
-              ? `<strong>${displayBillable.toFixed(2)} hrs</strong>${lunchAdd>0?'<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>':""}`
+            const totalWorkHrs=e.actualStart?Math.min(8,calcWorkHours(e.billableHrs,meetHrsTotal)):null;
+            const billableDisplay = totalWorkHrs!==null
+              ? `<strong>${totalWorkHrs.toFixed(2)} hrs</strong>`
               : (e.clockIn&&e.clockOut?"<span style='color:var(--muted)'>Pending</span>":"—");
-            const workHrsVal=e.actualStart?Math.min(8,calcWorkHours(e.billableHrs,meetHrsTotal)):null;
+            const workHrsVal=e.actualStart?(parseFloat(e.billableHrs||0)):null;
             const workHoursStr=workHrsVal!==null
-              ?`<strong>${workHrsVal.toFixed(2)} hrs</strong>`
+              ?`${workHrsVal.toFixed(2)} hrs`
               :'<span style="color:var(--muted)">Pending</span>';
             // Meeting column: list approved meetings for this date inline
             const meetingCell=dayMeetings.length>0

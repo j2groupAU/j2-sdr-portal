@@ -699,11 +699,11 @@ function renderEntriesTable() {
       <td style="font-size:12px;white-space:nowrap">${formatDate(e.workDate)}</td>
       <td><strong style="font-size:12px;">${e.sdrName||"—"}</strong></td>
       <td style="font-size:12px;white-space:nowrap">${e.clockIn||"—"} → ${e.clockOut||"—"}</td>
-      <td style="font-size:12px;white-space:nowrap">${(()=>{if(!e.actualStart)return'<span class="badge badge-amber" style="font-size:10px;">Pending</span>';const mHrs=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===e.sdrName&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);const wh=Math.min(8,calcWorkHours(e.billableHrs,mHrs));return`<strong>${wh.toFixed(1)}h</strong>`;})()}</td>
+      <td style="font-size:12px;white-space:nowrap">${e.actualStart?(e.billableHrs>0?`${parseFloat(e.billableHrs).toFixed(1)}h`:"0h"):'<span class="badge badge-amber" style="font-size:10px;">Pending</span>'}</td>
       <td style="font-size:11px;">${lunchStr}</td>
       <td style="font-size:11px;">${meetingCell}</td>
       <td style="font-size:11px;">${timeOffCell}</td>
-      <td style="font-size:12px;">${e.billableHrs>0?`<strong>${parseFloat(e.billableHrs).toFixed(1)}h</strong>`:"—"}</td>
+      <td style="font-size:12px;">${(()=>{if(!e.actualStart)return"—";const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===e.sdrName&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);const wh=Math.min(8,calcWorkHours(e.billableHrs,mH));return`<strong>${wh.toFixed(1)}h</strong>`;})()}</td>
       <td style="font-size:12px;">${(()=>{const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===e.sdrName&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);const ded=e.actualStart?calcDeduction(e.billableHrs,mH):0;return ded>0?`<span style="color:var(--red)">-${ded.toFixed(1)}</span>`:"—";})()}</td>
       <td style="white-space:nowrap;">${entryStatusLabel} ${getDisputeBadge(e.disputeStatus)}</td>
       <td><button class="btn btn-sm" style="padding:3px 8px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteEntry('${e.id}','${e.sdrName}','${formatDate(e.workDate)}')">🗑</button></td>
@@ -791,14 +791,13 @@ function autoComputeResolve(){
 }
 
 function computePay(s,e){
-  // Returns phone hours only (JustCall span minus 1hr lunch, capped at 7)
+  // billable = full JustCall actual time span (phone time, no lunch subtracted)
   const [sh,sm]=s.split(":").map(Number); const [eh,em]=e.split(":").map(Number);
-  const totalHrs=Math.max(0,((eh*60+em)-(sh*60+sm))/60);
-  const billable=Math.min(Math.max(0,totalHrs-1),7);
+  const billable=Math.max(0,((eh*60+em)-(sh*60+sm))/60);
   return {billable};
 }
 function calcWorkHours(billableHrs, meetingHrs){
-  // Work Hours = phone hours + 1hr lunch (always) + meeting hours
+  // Billable = phone hours (Work Hours) + 1hr lunch (always) + meeting hours
   return parseFloat(billableHrs||0) + 1 + parseFloat(meetingHrs||0);
 }
 function calcDeduction(billableHrs, meetingHrs){
