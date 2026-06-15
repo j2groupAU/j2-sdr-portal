@@ -713,8 +713,6 @@ function openEditModal(id) {
   document.getElementById("edit-modal-sub").textContent = `Cutoff: ${e.cutoffPeriod||"Not set"}`;
   document.getElementById("em-clock-in").textContent = e.clockIn||"—";
   document.getElementById("em-clock-out").textContent = e.clockOut||"—";
-  document.getElementById("em-actual-start").value = e.actualStart ? toTimeInput(e.actualStart) : "";
-  document.getElementById("em-actual-end").value = e.actualEnd ? toTimeInput(e.actualEnd) : "";
   // Work Hours: compute from actual times if available, else use stored billableHrs
   if(e.actualStart&&e.actualEnd){
     const[sh,sm]=e.actualStart.split(":").map(Number);const[eh,em]=e.actualEnd.split(":").map(Number);
@@ -732,22 +730,17 @@ function openEditModal(id) {
 }
 function closeEditModal(){document.getElementById("edit-modal").classList.remove("open");editItemId=null;}
 
-function autoCompute(){
-  const s=document.getElementById("em-actual-start").value; const e=document.getElementById("em-actual-end").value;
-  if(!s||!e) return;
-  const {billable}=computePay(s,e);
-  document.getElementById("em-billable").value=billable.toFixed(2);
-  // Compute daily pay: phone hours + approved meetings + 1hr lunch
+function autoCompute(){ autoComputeFromWorkHours(); }
+function autoComputeFromWorkHours(){
+  const billable=parseFloat(document.getElementById("em-billable").value||0);
   const entry=allEntries.find(x=>x.id==editItemId)||{};
-  const lunchTaken=document.getElementById("em-lunch-start")?.value ? "TRUE" : (entry.lunchTaken||"");
   const meetingHrs=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===entry.sdrName&&m.date===entry.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
   document.getElementById("em-deduction").value=calcDeduction(billable, meetingHrs).toFixed(2);
   const user=allUsers?.find(u=>u.name===entry.sdrName)||{rate:0};
   const monthlyRate=parseFloat(user.rate||0);
   const wDays=getWorkingDaysInCutoff(entry.cutoffPeriod||"current");
   const dailyRate=(monthlyRate/2)/Math.max(wDays,1);
-  const pay=calcDailyPay(billable, meetingHrs, dailyRate);
-  document.getElementById("em-daily-pay").value=pay.toFixed(2);
+  document.getElementById("em-daily-pay").value=calcDailyPay(billable, meetingHrs, dailyRate).toFixed(2);
 }
 
 function autoComputeResolve(){
