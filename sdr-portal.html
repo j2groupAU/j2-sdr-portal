@@ -1014,7 +1014,7 @@ function renderTimesheetGrouped() {
             const billableDisplay = displayBillable>0
               ? `<strong>${displayBillable.toFixed(2)} hrs</strong>${lunchAdd>0?'<span style="font-size:10px;color:#0A8050;margin-left:4px;">+1h lunch</span>':""}`
               : (e.clockIn&&e.clockOut?"<span style='color:var(--muted)'>Pending</span>":"—");
-            const workHrsVal=e.actualStart?Math.min(8,parseFloat(e.billableHrs||0)+meetHrsTotal+lunchAdd):null;
+            const workHrsVal=e.actualStart?Math.min(8,calcWorkHours(e.billableHrs,meetHrsTotal)):null;
             const workHoursStr=workHrsVal!==null
               ?`<strong>${workHrsVal.toFixed(2)} hrs</strong>`
               :'<span style="color:var(--muted)">Pending</span>';
@@ -1035,7 +1035,7 @@ function renderTimesheetGrouped() {
               <td style="font-size:11px;">${meetingCell}</td>
               <td style="font-size:11px;">${timeOffCell}</td>
               <td>${billableDisplay}</td>
-              <td>${(()=>{const ded=e.actualStart?calcDeduction(e.billableHrs,e.lunchTaken,meetHrsTotal):0;return ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—";})()}</td>
+              <td>${(()=>{const ded=e.actualStart?calcDeduction(e.billableHrs,meetHrsTotal):0;return ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—";})()}</td>
               <td style="white-space:nowrap;">${disputeCell}</td>
             </tr>`;
             return mainRow;
@@ -1341,15 +1341,16 @@ function calcMins(s,e){
   const [sh,sm]=s.split(":").map(Number),[eh,em]=e.split(":").map(Number);
   return Math.max(0,(eh*60+em)-(sh*60+sm));
 }
-function calcDeduction(billableHrs, lunchTaken, meetingHrs){
-  const lunch=(lunchTaken===true||lunchTaken==="TRUE"||lunchTaken==="true")?1:0;
-  const workHrs=Math.min(8, parseFloat(billableHrs||0)+parseFloat(meetingHrs||0)+lunch);
-  return Math.max(0, 8-workHrs);
+function calcWorkHours(billableHrs, meetingHrs){
+  // Work Hours = phone hours + 1hr lunch (always) + meeting hours
+  return parseFloat(billableHrs||0) + 1 + parseFloat(meetingHrs||0);
 }
-function calcDailyPay(billableHrs, lunchTaken, meetingHrs, dailyRate){
-  const lunch=(lunchTaken===true||lunchTaken==="TRUE"||lunchTaken==="true")?1:0;
-  const workHrs=Math.min(8, parseFloat(billableHrs||0)+parseFloat(meetingHrs||0)+lunch);
-  return (workHrs/8)*dailyRate;
+function calcDeduction(billableHrs, meetingHrs){
+  return Math.max(0, 8 - Math.min(8, calcWorkHours(billableHrs, meetingHrs)));
+}
+function calcDailyPay(billableHrs, meetingHrs, dailyRate){
+  const workHrs = Math.min(8, calcWorkHours(billableHrs, meetingHrs));
+  return (workHrs / 8) * dailyRate;
 }
 function calcDuration(s,e){
   const mins=calcMins(s,e);
