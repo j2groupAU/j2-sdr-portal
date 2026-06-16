@@ -1165,9 +1165,10 @@ function renderMeetings() {
           </div>
           <span class="badge badge-amber">⏳ Pending</span>
         </div>
-        <div style="display:flex;gap:10px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-success btn-sm" onclick="approveMeeting('${m.id}','${m.sdrName}',${calcMins(m.startTime,m.endTime)})">✓ Approve</button>
           <button class="btn btn-danger btn-sm" onclick="rejectMeeting('${m.id}')">✗ Reject</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteMeeting('${m.id}','${m.sdrName}')">🗑 Delete</button>
         </div>
       </div>`;
     }).join("");
@@ -1176,7 +1177,7 @@ function renderMeetings() {
   if (resolved.length > 0) {
     html += `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:20px 0 12px;">Resolved</div>`;
     html += `<div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
-      <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Time</th><th>Duration</th><th>Status</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Time</th><th>Duration</th><th>Status</th><th>Delete</th></tr></thead>
       <tbody>${resolved.sort((a,b)=>b.date.localeCompare(a.date)).map(m=>`<tr>
         <td><strong>${m.sdrName}</strong></td>
         <td>${formatDate(m.date)}</td>
@@ -1184,6 +1185,7 @@ function renderMeetings() {
         <td>${m.startTime} – ${m.endTime}</td>
         <td>${calcDuration(m.startTime,m.endTime)}</td>
         <td>${m.status==="Approved"?'<span class="badge badge-green">✓ Approved</span>':'<span class="badge badge-red">✗ Rejected</span>'}</td>
+        <td><button class="btn btn-sm" style="padding:3px 8px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteMeeting('${m.id}','${m.sdrName}')">🗑</button></td>
       </tr>`).join("")}</tbody>
     </table></div></div>`;
   }
@@ -1257,6 +1259,17 @@ async function rejectMeeting(id) {
     showAlert(alert, "success", "Meeting rejected.");
     loadMeetings();
   } catch(e) { showAlert(alert, "error", "Failed: "+e.message); }
+}
+
+async function deleteMeeting(id, name) {
+  if(!confirm(`Delete meeting record for ${name}? This cannot be undone.`)) return;
+  const alert = document.getElementById("alert-meetings");
+  try {
+    await apiPost({action:"deleteMeeting",id});
+    allMeetings=allMeetings.filter(m=>m.id!=id);
+    showAlert(alert,"success","Meeting record deleted.");
+    renderMeetings();
+  } catch(e) { showAlert(alert,"error","Delete failed: "+e.message); }
 }
 
 // ══════════════════════════════════════════════════
@@ -1522,6 +1535,7 @@ function renderLeave() {
           <button class="btn btn-success btn-sm" onclick="approveLeave('${l.id}','Paid')">✓ Approve — Paid</button>
           <button class="btn btn-secondary btn-sm" onclick="approveLeave('${l.id}','Unpaid')">✓ Approve — Unpaid</button>
           <button class="btn btn-danger btn-sm" onclick="rejectLeave('${l.id}')">✗ Reject</button>
+          <button class="btn btn-sm" style="padding:4px 10px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteLeave('${l.id}','${l.sdrName}')">🗑 Delete</button>
         </div>
       </div>`).join("");
   }
@@ -1529,7 +1543,7 @@ function renderLeave() {
   if(resolved.length>0){
     html+=`<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:20px 0 12px;">Resolved</div>`;
     html+=`<div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
-      <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Reason</th><th>Status</th><th>Pay Type</th><th>Admin Note</th></tr></thead>
+      <thead><tr><th>Employee</th><th>Date</th><th>Type</th><th>Reason</th><th>Status</th><th>Pay Type</th><th>Admin Note</th><th>Delete</th></tr></thead>
       <tbody>${resolved.sort((a,b)=>b.leaveDate.localeCompare(a.leaveDate)).map(l=>`<tr>
         <td><strong>${l.sdrName}</strong></td>
         <td>${formatDate(l.leaveDate)}</td>
@@ -1538,6 +1552,7 @@ function renderLeave() {
         <td>${getLeaveBadge(l.status)}</td>
         <td>${l.status==="Approved"?(l.payType==="Paid"?'<span class="badge badge-green">💰 Paid</span>':'<span class="badge badge-red">Unpaid</span>'):"—"}</td>
         <td style="font-size:12px;color:var(--muted);">${l.adminNote||"—"}</td>
+        <td><button class="btn btn-sm" style="padding:3px 8px;font-size:11px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;" onclick="deleteLeave('${l.id}','${l.sdrName}')">🗑</button></td>
       </tr>`).join("")}</tbody>
     </table></div></div>`;
   }
@@ -1569,6 +1584,17 @@ async function rejectLeave(id) {
     showAlert(alert,"success","Leave rejected.");
     loadLeave();
   } catch(e){showAlert(alert,"error","Failed: "+e.message);}
+}
+
+async function deleteLeave(id, name) {
+  if(!confirm(`Delete leave record for ${name}? This cannot be undone.`)) return;
+  const alert=document.getElementById("alert-leave");
+  try {
+    await apiPost({action:"deleteLeave",id});
+    allLeaves=allLeaves.filter(l=>l.id!=id);
+    showAlert(alert,"success","Leave record deleted.");
+    renderLeave();
+  } catch(e){showAlert(alert,"error","Delete failed: "+e.message);}
 }
 
 function addIncentiveRow(tsId) {
