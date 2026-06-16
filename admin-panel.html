@@ -902,6 +902,20 @@ function getWorkingDaysInCutoff(cutoff) {
   return count||1;
 }
 
+function getCutoffPeriodKey(cutoff){
+  const today=new Date(new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Sydney"}));
+  const day=today.getDate(),month=today.getMonth(),year=today.getFullYear();
+  if(cutoff==="current"){
+    if(day>=26) return year+"-"+(month+1)+"-26-to-"+(month===11?year+1:year)+"-"+((month+1)%12+1)+"-10";
+    if(day<=10) return (month===0?year-1:year)+"-"+((month-1+12)%12+1)+"-26-to-"+year+"-"+(month+1)+"-10";
+    return year+"-"+(month+1)+"-11-to-"+year+"-"+(month+1)+"-25";
+  } else {
+    if(day>=26) return year+"-"+(month+1)+"-11-to-"+year+"-"+(month+1)+"-25";
+    if(day<=10) return (month===0?year-1:year)+"-"+((month-1+12)%12+1)+"-11-to-"+(month===0?year-1:year)+"-"+((month-1+12)%12+1)+"-25";
+    return (month===0?year-1:year)+"-"+((month-1+12)%12+1)+"-26-to-"+year+"-"+(month+1)+"-10";
+  }
+}
+
 async function renderPayroll(){
   setLoading("payroll",false);
   const label=getCutoffDisplayLabel(payrollCutoff);
@@ -916,20 +930,20 @@ async function renderPayroll(){
   const getRate=(name)=>getRate(name)||userRates[(name||"").toLowerCase().trim()]||0;
 
   // Only SDRs with approved timesheets for this cutoff
-  // Filter approved timesheets matching the same date range as entries
-  const cutoffEntries=filterByCutoff(allEntries,payrollCutoff);
-  const cutoffDates=new Set(cutoffEntries.map(e=>e.workDate));
-  const approvedTs=allTimesheets.filter(t=>t.status==="Approved"&&
-    cutoffEntries.some(e=>e.sdrName===t.sdrName));
+  // Filter approved timesheets for this specific cutoff period
+  const currentCutoffKey=getCutoffPeriodKey(payrollCutoff);
+  const approvedTs=allTimesheets.filter(t=>t.status==="Approved"&&t.cutoffKey===currentCutoffKey);
   const approvedSdrNames=new Set(approvedTs.map(t=>t.sdrName));
-  const pe=filterByCutoff(allEntries,payrollCutoff).filter(e=>parseFloat(e.billableHrs)>0&&approvedSdrNames.has(e.sdrName));
+  // Include ALL entries with work hours for this cutoff (not just approved SDRs)
+  // so admin can see who has entries even without approved timesheets
+  const pe=filterByCutoff(allEntries,payrollCutoff).filter(e=>parseFloat(e.billableHrs)>0);
 
-  if(approvedTs.length===0&&pe.length===0){
-    document.getElementById("payroll-content").innerHTML=`<div class="empty-block"><div class="icon">💸</div><p>No approved timesheets for this period.</p></div>`;
+  if(pe.length===0){
+    document.getElementById("payroll-content").innerHTML=`<div class="empty-block"><div class="icon">💸</div><p>No payable entries for this period.</p></div>`;
     document.getElementById("payroll-content").style.display="block";return;
   }
 
-  // Group entries by SDR
+  // Group ALL entries for this cutoff by SDR
   const bySdr={};
   pe.forEach(e=>{if(!bySdr[e.sdrName])bySdr[e.sdrName]=[];bySdr[e.sdrName].push(e);});
 
