@@ -1014,7 +1014,7 @@ function renderTimesheetGrouped() {
             // Get meetings for this specific date
             const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
             // Compute work hours live from actual times (full span, no subtraction)
-            const workHrsVal=(()=>{if(!e.actualStart||!e.actualEnd)return null;const[sh,sm]=e.actualStart.split(":").map(Number);const[eh,em]=e.actualEnd.split(":").map(Number);return Math.max(0,((eh*60+em)-(sh*60+sm))/60);})();
+            const workHrsVal=parseFloat(e.billableHrs||0)>0 ? parseFloat(e.billableHrs) : null;
             const workHoursStr=workHrsVal!==null
               ?`${workHrsVal.toFixed(2)} hrs`
               :'<span style="color:var(--muted)">Pending</span>';
