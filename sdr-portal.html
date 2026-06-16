@@ -1434,8 +1434,8 @@ function renderSubmitPage(){
     <div class="card" style="padding:0;overflow:hidden;">
       <div style="padding:12px 16px;border-bottom:1.5px solid var(--border);"><div class="card-title" style="margin-bottom:0;">Entries</div></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Billable</th><th>Deduction</th><th>Status</th></tr></thead>
-        <tbody>${filtered.length===0?'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>':filtered.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Lunch</th><th>Meeting</th><th>Time Off</th><th>Billable</th><th>Deduction</th><th>Status</th></tr></thead>
+        <tbody>${filtered.length===0?'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>':filtered.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
           const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===currentUser.name&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
           const totalBil=parseFloat(e.billableHrs||0)>0?Math.min(8,calcWorkHours(parseFloat(e.billableHrs||0),mH,e.lunchTaken)):0;
           const ded2=parseFloat(e.billableHrs||0)>0?calcDeduction(parseFloat(e.billableHrs||0),mH,e.lunchTaken):0;
