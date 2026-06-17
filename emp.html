@@ -643,7 +643,7 @@ tr:hover td { background: rgba(100,160,255,0.04); }
         <div id="leave-loading" class="loading-block">Loading…</div>
         <div id="leave-empty" class="empty-block" style="display:none;"><div class="eicon">🏖️</div><p>No leave requests yet.</p></div>
         <div class="table-wrap" id="leave-table-wrap" style="display:none;">
-          <table><thead><tr><th>Date</th><th>Type</th><th>Reason</th><th>Status</th><th>Pay Type</th><th>Admin Note</th></tr></thead>
+          <table><thead><tr><th>Date</th><th>Type</th><th>Reason</th><th>Status</th><th>Pay Type</th><th>Paid Hrs</th><th>Admin Note</th></tr></thead>
           <tbody id="leave-body"></tbody></table>
         </div>
       </div>
@@ -1164,50 +1164,71 @@ function renderTimesheetGrouped() {
             <col style="width:auto">
           </colgroup>
           <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Work Hours</th><th>Lunch</th><th>Meeting</th><th>Time Off</th><th>Billable</th><th>Deduction</th><th>Request Review</th></tr></thead>
-          <tbody>${(()=>{const shownMeetingDates=new Set();return entries.sort((a,b)=>b.workDate.localeCompare(a.workDate)).map(e=>{
-            const actualStr=(e.billableHrs!=null&&e.billableHrs!=="")?'Entered':'<span style="color:var(--muted)">Pending</span>';
-            const canEntryDispute=!["Under Review","Approved"].includes(tsStatus)&&(e.billableHrs!=null&&e.billableHrs!=="")&&!["Under Review","Resolved"].includes(e.disputeStatus);
-            const disputeCell=canEntryDispute
-              ?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Request Review</button>`
-              :getDisputeBadge(e.disputeStatus);
-            const lunchStr=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")
-              ?`<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
-              :'<span style="color:var(--muted);font-size:11px;">None</span>';
-            // Get meetings for this specific date
-            const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
-            // Compute work hours live from actual times (full span, no subtraction)
-            const workHrsVal=(e.billableHrs!=null&&e.billableHrs!=="") ? parseFloat(e.billableHrs) : null;
-            const workHoursStr=workHrsVal!==null
-              ?`${workHrsVal.toFixed(2)} hrs`
-              :'<span style="color:var(--muted)">Pending</span>';
-            const meetHrsTotal=dayMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
-            const totalWorkHrs=workHrsVal!==null?Math.min(8,calcWorkHours(workHrsVal,meetHrsTotal,e.lunchTaken)):null;
-            const billableDisplay = totalWorkHrs!==null
-              ? `<strong>${totalWorkHrs.toFixed(2)} hrs</strong>`
-              : (e.clockIn?"<span style='color:var(--muted)'>Pending</span>":"—");
-            // Meeting column: total hours only
-            const totalMeetCellHrs=dayMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
-            const meetingCell=totalMeetCellHrs>0
-              ?`<span style="font-size:12px;font-weight:600;color:#1d4ed8;">${totalMeetCellHrs.toFixed(1)}h</span>`
-              :'<span style="color:var(--muted);font-size:11px;">—</span>';
-            // Time Off column: check approved leave for this date
-            const leaveOnDay=allLeaves.find(l=>l.leaveDate===e.workDate&&l.status==="Approved");
-            const timeOffCell=leaveOnDay
-              ?`<span style="font-size:10px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:2px 6px;color:#92400e;font-weight:600;">${leaveOnDay.leaveType||"Leave"}</span>`
-              :'<span style="color:var(--muted);font-size:11px;">—</span>';
-            const mainRow=`<tr style="border-bottom:1px solid #f0ece4;">
-              <td><strong>${formatDate(e.workDate)}</strong></td>
-              <td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td>
-              <td style="font-size:12px;">${workHoursStr}</td>
-              <td>${lunchStr}</td>
-              <td style="font-size:11px;">${meetingCell}</td>
-              <td style="font-size:11px;">${timeOffCell}</td>
-              <td>${billableDisplay}</td>
-              <td>${(()=>{const ded=workHrsVal!==null?calcDeduction(workHrsVal,meetHrsTotal,e.lunchTaken):0;return ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—";})()}</td>
-              <td style="white-space:nowrap;">${disputeCell}</td>
-            </tr>`;
-            return mainRow;
-          });})().join("")}</tbody>
+          <tbody>${(()=>{
+            // Merge work entries + leave rows, sort all by date descending
+            const cutoffLeaves = allLeaves.filter(l => cutoffDates.has(l.leaveDate));
+            const workDates = new Set(entries.map(e=>e.workDate));
+            const leaveOnlyRows = cutoffLeaves.filter(l => !workDates.has(l.leaveDate));
+            const combined = [
+              ...entries.map(e=>({type:'work', date:e.workDate, data:e})),
+              ...leaveOnlyRows.map(l=>({type:'leave', date:l.leaveDate, data:l}))
+            ].sort((a,b)=>b.date.localeCompare(a.date));
+            return combined.map(item=>{
+              if(item.type==='leave'){
+                const l=item.data;
+                const hrs=getLeaveHours(l.leaveType);
+                const payBadge=l.status==="Approved"
+                  ?(l.payType==="Paid"?'<span class="badge badge-green">💰 Paid</span>':'<span class="badge badge-red">Unpaid</span>')
+                  :'<span class="badge badge-gray">Pending</span>';
+                const paidHrsCell=l.status==="Approved"
+                  ?(l.payType==="Paid"?`<strong style="color:#0A8050;">${hrs}h</strong>`:`<span style="color:var(--muted);text-decoration:line-through;">${hrs}h</span>`)
+                  :`<span style="color:var(--muted);">${hrs}h</span>`;
+                return`<tr style="background:#fffbeb;border-bottom:1px solid #fde68a;">
+                  <td><strong>${formatDate(l.leaveDate)}</strong></td>
+                  <td colspan="6" style="font-size:12px;">
+                    🏖️ <strong>${l.leaveType||"Leave"}</strong>
+                    <span style="color:var(--muted);margin-left:8px;">${l.reason||""}</span>
+                    &nbsp;${payBadge}
+                    ${l.adminNote?`<span style="font-size:11px;color:var(--muted);margin-left:6px;">· ${l.adminNote}</span>`:""}
+                  </td>
+                  <td style="text-align:center;">${paidHrsCell}</td>
+                  <td>—</td>
+                  <td>—</td>
+                </tr>`;
+              }
+              const e=item.data;
+              const canEntryDispute=!["Under Review","Approved"].includes(tsStatus)&&(e.billableHrs!=null&&e.billableHrs!=="")&&!["Under Review","Resolved"].includes(e.disputeStatus);
+              const disputeCell=canEntryDispute
+                ?`${getDisputeBadge(e.disputeStatus)} <button class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;margin-left:4px;" onclick="openDisputeModal('${e.id}','${e.workDate}')">Request Review</button>`
+                :getDisputeBadge(e.disputeStatus);
+              const lunchStr=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")
+                ?`<span style="font-size:11px;color:#0A8050;font-weight:700;">🍽️ ${e.lunchStart||""}–${e.lunchEnd||""}</span>`
+                :'<span style="color:var(--muted);font-size:11px;">None</span>';
+              const dayMeetings=cutoffMeetings.filter(m=>m.date===e.workDate);
+              const workHrsVal=(e.billableHrs!=null&&e.billableHrs!=="") ? parseFloat(e.billableHrs) : null;
+              const workHoursStr=workHrsVal!==null?`${workHrsVal.toFixed(2)} hrs`:'<span style="color:var(--muted)">Pending</span>';
+              const meetHrsTotal=dayMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
+              const totalWorkHrs=workHrsVal!==null?Math.min(8,calcWorkHours(workHrsVal,meetHrsTotal,e.lunchTaken)):null;
+              const billableDisplay=totalWorkHrs!==null?`<strong>${totalWorkHrs.toFixed(2)} hrs</strong>`:(e.clockIn?"<span style='color:var(--muted)'>Pending</span>":"—");
+              const totalMeetCellHrs=dayMeetings.reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
+              const meetingCell=totalMeetCellHrs>0?`<span style="font-size:12px;font-weight:600;color:#1d4ed8;">${totalMeetCellHrs.toFixed(1)}h</span>`:'<span style="color:var(--muted);font-size:11px;">—</span>';
+              const leaveOnDay=cutoffLeaves.find(l=>l.leaveDate===e.workDate);
+              const timeOffCell=leaveOnDay
+                ?`<span style="font-size:10px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:2px 6px;color:#92400e;font-weight:600;">${leaveOnDay.leaveType||"Leave"}</span>`
+                :'<span style="color:var(--muted);font-size:11px;">—</span>';
+              return`<tr style="border-bottom:1px solid #f0ece4;">
+                <td><strong>${formatDate(e.workDate)}</strong></td>
+                <td>${e.clockIn||"—"}</td><td>${e.clockOut||"—"}</td>
+                <td style="font-size:12px;">${workHoursStr}</td>
+                <td>${lunchStr}</td>
+                <td style="font-size:11px;">${meetingCell}</td>
+                <td style="font-size:11px;">${timeOffCell}</td>
+                <td>${billableDisplay}</td>
+                <td>${(()=>{const ded=workHrsVal!==null?calcDeduction(workHrsVal,meetHrsTotal,e.lunchTaken):0;return ded>0?'<span style="color:var(--red)">-'+ded.toFixed(2)+'h</span>':"—";})()}</td>
+                <td style="white-space:nowrap;">${disputeCell}</td>
+              </tr>`;
+            });
+          })().join("")}</tbody>
         </table></div>`;
     // Cutoff-level dispute (after timesheet submitted)
     if(ts && ["Pending","Rejected","Disputed"].includes(ts.status)) {
@@ -1692,8 +1713,24 @@ function renderLeave(){
   if(allLeaves.length===0){document.getElementById("leave-empty").style.display="block";return;}
   document.getElementById("leave-table-wrap").style.display="block";
   document.getElementById("leave-body").innerHTML=allLeaves.sort((a,b)=>b.leaveDate.localeCompare(a.leaveDate)).map(l=>{
-    const payBadge=l.status==="Approved"?(l.payType==="Paid"?'<span class="badge badge-green">💰 Paid</span>':'<span class="badge badge-red">Unpaid</span>'):"—";
-    return`<tr><td><strong>${formatDate(l.leaveDate)}</strong></td><td>${l.leaveType||"—"}</td><td style="font-size:12px;max-width:180px;">${l.reason||"—"}</td><td>${getLeaveBadge(l.status)}</td><td>${payBadge}</td><td style="font-size:12px;color:var(--muted);">${l.adminNote||"—"}</td></tr>`;
+    const hrs=getLeaveHours(l.leaveType);
+    const payBadge=l.status==="Approved"
+      ?(l.payType==="Paid"?'<span class="badge badge-green">💰 Paid</span>':'<span class="badge badge-red">Unpaid</span>')
+      :'<span class="badge badge-gray">Pending</span>';
+    const paidHrsCell=l.status==="Approved"
+      ?(l.payType==="Paid"
+        ?`<strong style="color:#0A8050;">${hrs}h</strong>`
+        :`<span style="color:var(--muted);text-decoration:line-through;">${hrs}h</span> <span style="font-size:10px;color:var(--red);">Unpaid</span>`)
+      :`<span style="color:var(--muted);">${hrs}h</span>`;
+    return`<tr>
+      <td><strong>${formatDate(l.leaveDate)}</strong></td>
+      <td>${l.leaveType||"—"}</td>
+      <td style="font-size:12px;max-width:180px;">${l.reason||"—"}</td>
+      <td>${getLeaveBadge(l.status)}</td>
+      <td>${payBadge}</td>
+      <td style="text-align:center;">${paidHrsCell}</td>
+      <td style="font-size:12px;color:var(--muted);">${l.adminNote||"—"}</td>
+    </tr>`;
   }).join("");
 }
 async function submitLeave(){
@@ -1711,6 +1748,13 @@ async function submitLeave(){
   }catch(e){showAlert(alert,"error","Could not submit: "+e.message);}
   btn.innerHTML="Submit Leave Request"; btn.disabled=false;
 }
+function getLeaveHours(leaveType){
+  if(!leaveType) return 0;
+  if(leaveType==="Full Day") return 8;
+  if(leaveType.startsWith("Half Day")) return 4;
+  return 0;
+}
+
 function getLeaveBadge(s){
   if(s==="Approved") return '<span class="badge badge-green">✓ Approved</span>';
   if(s==="Rejected") return '<span class="badge badge-red">✗ Rejected</span>';
