@@ -600,6 +600,39 @@ tr:hover td { background: rgba(100,160,255,0.04); }
       <button class="btn btn-secondary" onclick="closePsDisputeModal()">Cancel</button>
     </div>
   </div>
+
+<!-- Manual Timesheet Modal -->
+<div id="manual-ts-modal" style="display:none;position:fixed;inset:0;background:rgba(10,22,40,0.55);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px 32px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,80,180,0.18);">
+    <div style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px;">Enter Timesheet</div>
+    <div id="manual-ts-period" style="font-size:13px;color:var(--muted);margin-bottom:20px;"></div>
+    <div id="manual-ts-alert" class="alert" style="margin-bottom:12px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Date</label>
+        <input type="date" id="mts-date" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-light);border-radius:8px;font-size:13px;" />
+      </div>
+      <div></div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Start Time</label>
+        <input type="time" id="mts-start" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-light);border-radius:8px;font-size:13px;" />
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">End Time</label>
+        <input type="time" id="mts-end" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-light);border-radius:8px;font-size:13px;" />
+      </div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;">Reason / Explanation</label>
+      <textarea id="mts-reason" rows="3" placeholder="Explain why you are filing this timesheet..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border-light);border-radius:8px;font-size:13px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" id="mts-submit-btn" onclick="submitManualTimesheet()">Submit for Review</button>
+      <button class="btn btn-secondary" onclick="closeManualTimesheetModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <script>
@@ -991,7 +1024,7 @@ function renderTimesheetGrouped() {
     html+=`<div class="cutoff-group">
       <div class="cutoff-group-header">
         <div><div class="title">${cutoffLabel}</div><div class="meta">${entries.length} entries &nbsp;·&nbsp; ${grandTotalHrs.toFixed(1)} billable hrs (incl. ${totalMeetingHrs.toFixed(1)}h meetings)</div></div>
-        <div style="display:flex;align-items:center;gap:10px;">${tsStatusBadge}</div>
+        <div style="display:flex;align-items:center;gap:10px;">${tsStatusBadge} <button class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 12px;border-radius:8px;margin-left:6px;" onclick="openManualTimesheetModal('${cutoffLabel}')">+ Enter Timesheet</button></div>
       </div>
       <div class="cutoff-group-body">
         <div class="table-wrap"><table>

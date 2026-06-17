@@ -813,11 +813,32 @@ async function saveEntry() {
 
 function renderDisputes() {
   setLoading("disputes",false);
-  const disputes=allEntries.filter(e=>e.disputeStatus==="Under Review"||e.disputeStatus==="Under Review");
-  if(disputes.length===0){document.getElementById("disputes-empty").style.display="block";document.getElementById("disputes-content").style.display="none";return;}
+  // Manual timesheet requests (new entries SDR submitted manually)
+  const manualRequests=allEntries.filter(e=>e.disputeStatus==="Manual Request");
+  const disputes=allEntries.filter(e=>e.disputeStatus==="Under Review");
+  if(disputes.length===0&&manualRequests.length===0){document.getElementById("disputes-empty").style.display="block";document.getElementById("disputes-content").style.display="none";return;}
   document.getElementById("disputes-empty").style.display="none";
   document.getElementById("disputes-content").style.display="block";
-  document.getElementById("disputes-content").innerHTML=disputes.map(e=>`
+  // Manual requests section
+  const manualHtml=manualRequests.length===0?"":(`
+    <div style="font-size:13px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--accent2);">📋 Manual Timesheet Requests</div>
+    `+manualRequests.map(e=>`
+    <div class="card" style="border-left:4px solid #8b5cf6;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+        <div><div style="font-size:15px;font-weight:700;color:var(--navy);">${e.sdrName} — ${formatDate(e.workDate)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">Clock In: ${e.clockIn||"—"} &nbsp;→&nbsp; Clock Out: ${e.clockOut||"—"} &nbsp;·&nbsp; Cutoff: ${e.cutoffPeriod||"—"}</div>
+        </div>
+        <span style="background:#f3e8ff;color:#7c3aed;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;">Manual Request</span>
+      </div>
+      <div style="background:#faf8ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--navy);">
+        <strong>Reason:</strong> ${(e.disputeNotes||e.adminNotes||"No reason provided").replace("[Manual Entry] ","")}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-success btn-sm" onclick="approveManualEntry('${e.id}','${e.sdrName}','${e.clockIn}','${e.clockOut}')">✓ Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="denyManualEntry('${e.id}','${e.sdrName}')">✗ Deny</button>
+      </div>
+    </div>`).join(""));
+  document.getElementById("disputes-content").innerHTML=manualHtml+(disputes.length===0?"":`<div style="font-size:13px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--accent2);margin-top:${manualRequests.length>0?"24px":"0"};">⚠️ Entry Disputes</div>`)+disputes.map(e=>`
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
         <div><div style="font-size:15px;font-weight:700;color:var(--navy);">${e.sdrName} — ${formatDate(e.workDate)}</div><div style="font-size:12px;color:var(--muted);margin-top:3px;">${e.cutoffPeriod||"—"}</div></div>
@@ -1686,6 +1707,38 @@ async function deleteEntry(id, name, date) {
     loadAllEntries();
   } catch(e) { alert("Failed: " + e.message); }
 }
+
+async function approveManualEntry(id, name, clockIn, clockOut) {
+  if(!confirm('Approve manual timesheet for '+name+'?')) return;
+  const alert=document.getElementById("alert-disputes");
+  try {
+    // Compute work hours from clock in/out span
+    let billable = "";
+    if(clockIn && clockOut) {
+      const [sh,sm]=clockIn.split(":").map(Number);
+      const [eh,em]=clockOut.split(":").map(Number);
+      billable = Math.max(0,((eh*60+em)-(sh*60+sm))/60).toFixed(2);
+    }
+    await apiPost({action:"updateEntry", id, disputeStatus:"Approved", adminNotes:"Manual entry approved", billableHrs:billable});
+    const e=allEntries.find(x=>x.id==id);
+    if(e){e.disputeStatus="Approved"; e.billableHrs=billable;}
+    showAlert(alert,"success","✓ Manual timesheet approved for "+name+".");
+    renderDisputes(); applyFilters();
+  } catch(e){showAlert(alert,"error","Failed: "+e.message);}
+}
+
+async function denyManualEntry(id, name) {
+  if(!confirm('Deny manual timesheet request for '+name+'?')) return;
+  const alert=document.getElementById("alert-disputes");
+  try {
+    await apiPost({action:"updateEntry", id, disputeStatus:"Rejected", adminNotes:"Manual entry denied"});
+    const e=allEntries.find(x=>x.id==id);
+    if(e) e.disputeStatus="Rejected";
+    showAlert(alert,"success","Manual timesheet denied for "+name+".");
+    renderDisputes(); applyFilters();
+  } catch(e){showAlert(alert,"error","Failed: "+e.message);}
+}
+
 
 async function deleteTimesheet(id, name) {
   if (!confirm('Delete timesheet for ' + name + '?\nThis cannot be undone.')) return;
