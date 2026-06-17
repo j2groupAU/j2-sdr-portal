@@ -136,7 +136,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(1
 .notif-dismiss { margin-left: 4px; opacity: 0.6; font-size: 10px; }
 
 /* ── TABS ── */
-.nav-tabs { position: sticky; top: 62px; z-index: 199; background: linear-gradient(135deg, #0F2040 0%, #162848 100%); border-bottom: 1px solid rgba(77,159,255,0.2); display: flex; padding: 0 20px; overflow-x: auto; gap: 0; box-shadow: 0 4px 16px rgba(0,50,120,0.15); }
+.nav-tabs { position: sticky; top: 62px; z-index: 199; background: linear-gradient(135deg, #0F2040 0%, #162848 100%); border-bottom: 1px solid rgba(77,159,255,0.2); display: flex; align-items:center; justify-content:space-between; padding: 0 20px; overflow-x: auto; gap: 0; box-shadow: 0 4px 16px rgba(0,50,120,0.15); }
 .nav-tab { padding: 13px 18px; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; letter-spacing: 0.2px; }
 .nav-tab:hover { color: rgba(255,255,255,0.8); }
 .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -360,12 +360,25 @@ tr:hover td { background: rgba(100,160,255,0.04); }
 
 
   <div class="nav-tabs">
-    <div class="nav-tab active" onclick="switchTab('time')" id="tab-time">⏱ Time Management</div>
-    <div class="nav-tab" onclick="switchTab('timesheet')" id="tab-timesheet">📋 My Timesheet</div>
-    <div class="nav-tab" onclick="switchTab('payslip')" id="tab-payslip">🧾 Payslip</div>
-    <div class="nav-tab" onclick="switchTab('meetings')" id="tab-meetings">📅 Meetings</div>
-    <div class="nav-tab" onclick="switchTab('submit')" id="tab-submit">📤 Submit Timesheet</div>
-    <div class="nav-tab" onclick="switchTab('leave')" id="tab-leave">🏖️ Leave</div>
+    <div style="display:flex;align-items:center;overflow-x:auto;flex:1;">
+      <div class="nav-tab active" onclick="switchTab('time')" id="tab-time">⏱ Time Management</div>
+      <div class="nav-tab" onclick="switchTab('timesheet')" id="tab-timesheet">📋 My Timesheet</div>
+      <div class="nav-tab" onclick="switchTab('payslip')" id="tab-payslip">🧾 Payslip</div>
+      <div class="nav-tab" onclick="switchTab('meetings')" id="tab-meetings">📅 Meetings</div>
+      <div class="nav-tab" onclick="switchTab('submit')" id="tab-submit">📤 Submit Timesheet</div>
+      <div class="nav-tab" onclick="switchTab('leave')" id="tab-leave">🏖️ Leave</div>
+    </div>
+    <!-- Bell button aligned to nav bar -->
+    <div style="flex-shrink:0;padding:0 6px 0 10px;display:flex;align-items:center;">
+      <button id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications"
+        style="position:relative;background:rgba(255,255,255,0.07);border:1.5px solid rgba(255,255,255,0.18);border-radius:10px;padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.75);transition:all 0.18s;white-space:nowrap;"
+        onmouseover="this.style.background='rgba(0,194,255,0.18)';this.style.borderColor='rgba(0,194,255,0.5)';this.style.color='#fff';"
+        onmouseout="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.18)';this.style.color='rgba(255,255,255,0.75)';">
+        <span style="font-size:16px;line-height:1;">🔔</span>
+        <span>Notifications</span>
+        <span id="notif-count-badge" style="display:none;background:#E53935;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:900;min-width:18px;text-align:center;"></span>
+      </button>
+    </div>
   </div>
 
   <div class="main">
@@ -384,8 +397,9 @@ tr:hover td { background: rgba(100,160,255,0.04); }
 
 
 
-      <div style="display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start;margin-bottom:0;">
-        <!-- Clock In/Out Card -->
+      <div style="display:flex;gap:0;align-items:start;margin-bottom:0;">
+        <!-- Clock In/Out Card — ~5 inches wide -->
+        <div style="width:480px;max-width:100%;">
         <div class="card" id="clock-card-in">
           <div class="card-title"><div class="card-icon">▶</div> Clock In</div>
           <div class="field-group"><label>Date</label><input type="date" id="clock-in-date" /></div>
@@ -435,26 +449,17 @@ tr:hover td { background: rgba(100,160,255,0.04); }
         </div>
 
         <!-- NOTIFICATIONS COLUMN - bell icon only; panel is fixed -->
-        <div id="notif-column-placeholder" style="display:flex;justify-content:flex-end;align-items:flex-start;padding-top:4px;">
-          <button id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications"
-            style="position:relative;background:rgba(0,194,255,0.12);border:1.5px solid rgba(0,194,255,0.3);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#006699;transition:all 0.18s;"
-            onmouseover="this.style.background='rgba(0,194,255,0.22)';this.style.borderColor='rgba(0,194,255,0.55)';"
-            onmouseout="this.style.background='rgba(0,194,255,0.12)';this.style.borderColor='rgba(0,194,255,0.3)';">
-            <span style="font-size:18px;line-height:1;">🔔</span>
-            <span>Notifications</span>
-            <span id="notif-count-badge" style="display:none;background:#E53935;color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:900;letter-spacing:0;min-width:18px;text-align:center;"></span>
-          </button>
-        </div>
-      </div>
+        </div><!-- end clock card width wrapper -->
+      </div><!-- end clock flex row -->
 
       <!-- ══ FIXED NOTIFICATION PANEL ══ -->
       <div id="inline-notif-wrap" style="
           display:none;
           position:fixed;
-          top:120px;
+          top:112px;
           right:20px;
           width:340px;
-          max-height:calc(100vh - 150px);
+          max-height:calc(100vh - 130px);
           background:#fff;
           border-radius:16px;
           box-shadow:0 8px 40px rgba(10,22,40,0.18), 0 2px 12px rgba(10,22,40,0.10);
@@ -481,7 +486,7 @@ tr:hover td { background: rgba(100,160,255,0.04); }
             display:flex;
             flex-direction:column;
             gap:8px;
-            max-height:calc(100vh - 220px);
+            max-height:calc(100vh - 200px);
             scrollbar-width:thin;
             scrollbar-color:#C5D8F5 transparent;">
         </div>
