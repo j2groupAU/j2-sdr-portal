@@ -381,6 +381,50 @@ tr:hover td { background: rgba(100,160,255,0.04); }
     </div>
   </div>
 
+  <!-- ══ FIXED NOTIFICATION PANEL (outside all pages so it's always accessible) ══ -->
+  <div id="inline-notif-wrap" style="
+      position:fixed;
+      top:112px;
+      right:20px;
+      width:340px;
+      max-height:calc(100vh - 130px);
+      background:#fff;
+      border-radius:16px;
+      box-shadow:0 8px 40px rgba(10,22,40,0.18), 0 2px 12px rgba(10,22,40,0.10);
+      border:1.5px solid rgba(0,194,255,0.25);
+      z-index:1200;
+      display:none;
+      flex-direction:column;
+      overflow:hidden;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px 18px;border-bottom:1px solid #EEF4FF;background:linear-gradient(135deg,#F0F8FF,#E8F4FF);flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">🔔</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#0A1628;">Notifications</span>
+        <span id="notif-count-badge-panel" style="display:none;background:#E53935;color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:900;min-width:18px;text-align:center;"></span>
+      </div>
+      <button onclick="toggleNotifPanel()" title="Close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#8899AA;padding:2px 4px;line-height:1;border-radius:6px;"
+        onmouseover="this.style.background='#EEF4FF';" onmouseout="this.style.background='none';">✕</button>
+    </div>
+    <!-- Scrollable body -->
+    <div id="inline-notif-inner" style="
+        flex:1;
+        overflow-y:auto;
+        padding:12px 14px;
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+        max-height:calc(100vh - 200px);
+        scrollbar-width:thin;
+        scrollbar-color:#C5D8F5 transparent;">
+    </div>
+    <!-- Footer: clear all -->
+    <div id="notif-footer" style="display:none;padding:10px 14px;border-top:1px solid #EEF4FF;text-align:center;flex-shrink:0;">
+      <button onclick="clearAllNotifs()" style="background:none;border:1px solid #C5D8F5;color:#5577AA;border-radius:8px;padding:5px 18px;font-size:11px;font-weight:700;cursor:pointer;"
+        onmouseover="this.style.background='#EEF4FF';" onmouseout="this.style.background='none';">Clear all</button>
+    </div>
+  </div>
+
   <div class="main">
 
     <!-- ══ TIME MANAGEMENT ══ -->
@@ -493,50 +537,7 @@ tr:hover td { background: rgba(100,160,255,0.04); }
         </div>
       </div>
 
-      <!-- ══ FIXED NOTIFICATION PANEL ══ -->
-      <div id="inline-notif-wrap" style="
-          display:none;
-          position:fixed;
-          top:112px;
-          right:20px;
-          width:340px;
-          max-height:calc(100vh - 130px);
-          background:#fff;
-          border-radius:16px;
-          box-shadow:0 8px 40px rgba(10,22,40,0.18), 0 2px 12px rgba(10,22,40,0.10);
-          border:1.5px solid rgba(0,194,255,0.25);
-          z-index:1200;
-          display:none;
-          flex-direction:column;
-          overflow:hidden;">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px 18px;border-bottom:1px solid #EEF4FF;background:linear-gradient(135deg,#F0F8FF,#E8F4FF);flex-shrink:0;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:18px;">🔔</span>
-            <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:#0A1628;">Notifications</span>
-            <span id="notif-count-badge-panel" style="display:none;background:#E53935;color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:900;min-width:18px;text-align:center;"></span>
-          </div>
-          <button onclick="toggleNotifPanel()" title="Close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#8899AA;padding:2px 4px;line-height:1;border-radius:6px;"
-            onmouseover="this.style.background='#EEF4FF';" onmouseout="this.style.background='none';">✕</button>
-        </div>
-        <!-- Scrollable body -->
-        <div id="inline-notif-inner" style="
-            flex:1;
-            overflow-y:auto;
-            padding:12px 14px;
-            display:flex;
-            flex-direction:column;
-            gap:8px;
-            max-height:calc(100vh - 200px);
-            scrollbar-width:thin;
-            scrollbar-color:#C5D8F5 transparent;">
-        </div>
-        <!-- Footer: clear all -->
-        <div id="notif-footer" style="display:none;padding:10px 14px;border-top:1px solid #EEF4FF;text-align:center;flex-shrink:0;">
-          <button onclick="clearAllNotifs()" style="background:none;border:1px solid #C5D8F5;color:#5577AA;border-radius:8px;padding:5px 18px;font-size:11px;font-weight:700;cursor:pointer;"
-            onmouseover="this.style.background='#EEF4FF';" onmouseout="this.style.background='none';">Clear all</button>
-        </div>
-      </div>
+
 
 
     </div>
@@ -1179,9 +1180,12 @@ function renderTimesheetGrouped() {
                 const payBadge=l.status==="Approved"
                   ?(l.payType==="Paid"?'<span class="badge badge-green">💰 Paid</span>':'<span class="badge badge-red">Unpaid</span>')
                   :'<span class="badge badge-gray">Pending</span>';
-                const paidHrsCell=l.status==="Approved"
-                  ?(l.payType==="Paid"?`<strong style="color:#0A8050;">${hrs}h</strong>`:`<span style="color:var(--muted);text-decoration:line-through;">${hrs}h</span>`)
-                  :`<span style="color:var(--muted);">${hrs}h</span>`;
+                const billableLeaveHrs = (l.status==="Approved" && l.payType==="Paid") ? hrs : 0;
+                const paidHrsCell = l.status==="Approved"
+                  ? (l.payType==="Paid"
+                    ? `<strong style="color:#0A8050;">${hrs}h</strong>`
+                    : `<span style="color:var(--muted);">0h</span>`)
+                  : `<span style="color:var(--muted);">—</span>`;
                 return`<tr style="background:#fffbeb;border-bottom:1px solid #fde68a;">
                   <td><strong>${formatDate(l.leaveDate)}</strong></td>
                   <td colspan="6" style="font-size:12px;">
@@ -1598,10 +1602,19 @@ function renderSubmitPage(){
   const existing=allTimesheets.find(t=>t.cutoffKey===cutoffKey);
   const monthlyRate=currentUser.rate||0,cutoffRate=monthlyRate/2;
   const wDays=getWorkingDaysInCutoff(submitCutoffVal),dailyRate=cutoffRate/wDays;
-  const totalHrs=filtered.reduce((s,e)=>{
+  // Approved leaves for this cutoff period
+  const cutoffLeaves=(allLeaves||[]).filter(l=>l.status==="Approved"&&getCutoffPeriodKey(l.leaveDate)===cutoffKey);
+  // Billable hrs from work entries
+  const workBillableHrs=filtered.reduce((s,e)=>{
     const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===currentUser.name&&m.date===e.workDate).reduce((ms,m)=>ms+calcMins(m.startTime,m.endTime)/60,0);
     return s+((e.billableHrs!=null&&e.billableHrs!=="")?Math.min(8,calcWorkHours(parseFloat(e.billableHrs||0),mH,e.lunchTaken)):0);
   },0);
+  // Billable hrs from paid approved leaves only
+  const leaveBillableHrs=cutoffLeaves.reduce((s,l)=>{
+    if(l.payType==="Paid") return s+getLeaveHours(l.leaveType);
+    return s;
+  },0);
+  const totalHrs=workBillableHrs+leaveBillableHrs;
   const totalDed=filtered.reduce((s,e)=>{
     const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===currentUser.name&&m.date===e.workDate).reduce((ms,m)=>ms+calcMins(m.startTime,m.endTime)/60,0);
     return s+((e.billableHrs!=null&&e.billableHrs!=="")?calcDeduction(parseFloat(e.billableHrs||0),mH,e.lunchTaken):0);
@@ -1639,7 +1652,7 @@ function renderSubmitPage(){
     <div class="card">
       <div class="card-title">📊 Summary</div>
       <div class="mini-grid">
-        <div class="mini-card"><div class="lbl">Days</div><div class="val">${filtered.length}</div></div>
+        <div class="mini-card"><div class="lbl">Days</div><div class="val">${filtered.length + cutoffLeaves.length}</div></div>
         <div class="mini-card"><div class="lbl">Billable Hrs</div><div class="val gold">${totalHrs.toFixed(2)}</div></div>
 
       </div>
@@ -1648,17 +1661,32 @@ function renderSubmitPage(){
       <div style="padding:12px 16px;border-bottom:1.5px solid var(--border);"><div class="card-title" style="margin-bottom:0;">Entries</div></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Work Hours</th><th>Lunch</th><th>Meeting</th><th>Time Off</th><th>Billable</th><th>Deduction</th><th>Status</th></tr></thead>
-        <tbody>${filtered.length===0?'<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>':filtered.sort((a,b)=>a.workDate.localeCompare(b.workDate)).map(e=>{
-          const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===currentUser.name&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
-          const totalBil=(e.billableHrs!=null&&e.billableHrs!=="")?Math.min(8,calcWorkHours(parseFloat(e.billableHrs||0),mH,e.lunchTaken)):0;
-          const ded2=(e.billableHrs!=null&&e.billableHrs!=="")?calcDeduction(parseFloat(e.billableHrs||0),mH,e.lunchTaken):0;
-          const lunchCell=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")?('<span style="color:#0A8050;font-weight:600;font-size:11px;">🍽 '+(e.lunchStart||'')+(e.lunchEnd?'–'+e.lunchEnd:'')+'</span>'):'<span style="color:var(--muted);font-size:11px;">None</span>';
-          const meetCell=mH>0?('<span style="font-size:12px;font-weight:600;color:#1d4ed8;">'+mH.toFixed(1)+'h</span>'):'—';
-          const leaveOnDay=(allLeaves||[]).find(l=>l.leaveDate===e.workDate&&l.status==="Approved");
-          const timeOffCell=leaveOnDay?('<span style="font-size:10px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:2px 6px;color:#92400e;font-weight:600;">'+(leaveOnDay.leaveType||'Leave')+'</span>'):'—';
-          const entryStatus=(e.billableHrs!=null&&e.billableHrs!=="")?'<span style="color:#15803d;font-weight:700;">✓ Complete</span>':'<span style="color:#92400e;">Pending</span>';
-          return('<tr><td>'+formatDate(e.workDate)+'</td><td>'+(e.clockIn||'-')+'</td><td>'+(e.clockOut||'-')+'</td><td>'+((e.billableHrs!=null&&e.billableHrs!=="")?parseFloat(e.billableHrs).toFixed(2)+' hrs':'<span style="color:var(--muted);font-size:11px;">Pending</span>')+'</td><td>'+lunchCell+'</td><td>'+meetCell+'</td><td>'+timeOffCell+'</td><td>'+(totalBil>0?totalBil.toFixed(2)+' hrs':'-')+'</td><td>'+(ded2>0?'<span style="color:#dc2626">-'+ded2.toFixed(2)+'h</span>':'-')+'</td><td>'+entryStatus+'</td></tr>');
-        }).join("")}</tbody>
+        <tbody>${(()=>{
+          // Combine work entries + approved leaves, sorted by date
+          const leaveRows=cutoffLeaves.map(l=>({type:'leave',date:l.leaveDate,data:l}));
+          const workRows=filtered.map(e=>({type:'work',date:e.workDate,data:e}));
+          const combined=[...workRows,...leaveRows].sort((a,b)=>a.date.localeCompare(b.date));
+          if(combined.length===0) return '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:20px;">No entries for this period.</td></tr>';
+          return combined.map(item=>{
+            if(item.type==='leave'){
+              const l=item.data;
+              const lHrs=getLeaveHours(l.leaveType);
+              const bilHrs=(l.payType==="Paid")?lHrs:0;
+              const payBadge=l.payType==="Paid"?'<span style="font-size:10px;background:#dcfce7;border:1px solid #86efac;border-radius:4px;padding:2px 6px;color:#15803d;font-weight:600;">💰 Paid</span>':'<span style="font-size:10px;background:#fee2e2;border:1px solid #fca5a5;border-radius:4px;padding:2px 6px;color:#b91c1c;font-weight:600;">Unpaid</span>';
+              return '<tr style="background:#fffbeb;border-bottom:1px solid #fde68a;"><td><strong>'+formatDate(l.leaveDate)+'</strong></td><td colspan="5" style="font-size:12px;">🏖️ <strong>'+(l.leaveType||'Leave')+'</strong> &nbsp;'+payBadge+'</td><td>—</td><td>'+(bilHrs>0?'<strong style="color:#0A8050;">'+bilHrs+'h</strong>':'<span style="color:var(--muted);">0h</span>')+'</td><td>—</td><td><span style="color:#15803d;font-weight:700;">✓ Approved</span></td></tr>';
+            }
+            const e=item.data;
+            const mH=allMeetings.filter(m=>m.status==="Approved"&&m.sdrName===currentUser.name&&m.date===e.workDate).reduce((s,m)=>s+calcMins(m.startTime,m.endTime)/60,0);
+            const totalBil=(e.billableHrs!=null&&e.billableHrs!=="")?Math.min(8,calcWorkHours(parseFloat(e.billableHrs||0),mH,e.lunchTaken)):0;
+            const ded2=(e.billableHrs!=null&&e.billableHrs!=="")?calcDeduction(parseFloat(e.billableHrs||0),mH,e.lunchTaken):0;
+            const lunchCell=(e.lunchTaken==="TRUE"||e.lunchTaken===true||e.lunchTaken==="true")?('<span style="color:#0A8050;font-weight:600;font-size:11px;">🍽 '+(e.lunchStart||'')+(e.lunchEnd?'–'+e.lunchEnd:'')+'</span>'):'<span style="color:var(--muted);font-size:11px;">None</span>';
+            const meetCell=mH>0?('<span style="font-size:12px;font-weight:600;color:#1d4ed8;">'+mH.toFixed(1)+'h</span>'):'—';
+            const leaveOnDay=(allLeaves||[]).find(l=>l.leaveDate===e.workDate&&l.status==="Approved");
+            const timeOffCell=leaveOnDay?('<span style="font-size:10px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;padding:2px 6px;color:#92400e;font-weight:600;">'+(leaveOnDay.leaveType||'Leave')+'</span>'):'—';
+            const entryStatus=(e.billableHrs!=null&&e.billableHrs!=="")?'<span style="color:#15803d;font-weight:700;">✓ Complete</span>':'<span style="color:#92400e;">Pending</span>';
+            return('<tr><td>'+formatDate(e.workDate)+'</td><td>'+(e.clockIn||'-')+'</td><td>'+(e.clockOut||'-')+'</td><td>'+((e.billableHrs!=null&&e.billableHrs!=="")?parseFloat(e.billableHrs).toFixed(2)+' hrs':'<span style="color:var(--muted);font-size:11px;">Pending</span>')+'</td><td>'+lunchCell+'</td><td>'+meetCell+'</td><td>'+timeOffCell+'</td><td>'+(totalBil>0?totalBil.toFixed(2)+' hrs':'-')+'</td><td>'+(ded2>0?'<span style="color:#dc2626">-'+ded2.toFixed(2)+'h</span>':'-')+'</td><td>'+entryStatus+'</td></tr>');
+          }).join("");
+        })()}</tbody>
       </table></div>
     </div>`;
   content.style.display="block";
@@ -1719,8 +1747,8 @@ function renderLeave(){
     const paidHrsCell=l.status==="Approved"
       ?(l.payType==="Paid"
         ?`<strong style="color:#0A8050;">${hrs}h</strong>`
-        :`<span style="color:var(--muted);text-decoration:line-through;">${hrs}h</span> <span style="font-size:10px;color:var(--red);">Unpaid</span>`)
-      :`<span style="color:var(--muted);">${hrs}h</span>`;
+        :`<span style="color:var(--muted);">0h</span>`)
+      :`<span style="color:var(--muted);">—</span>`;
     return`<tr>
       <td><strong>${formatDate(l.leaveDate)}</strong></td>
       <td>${l.leaveType||"—"}</td>
