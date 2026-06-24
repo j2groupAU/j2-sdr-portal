@@ -73,7 +73,7 @@
   .status-badge.watching{background:#FFF4E0;color:var(--warn);}
   .status-badge.pending{background:var(--light);color:var(--muted);}
   .video-wrap{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-  .video-inner{position:relative;padding-bottom:56.25%;height:0;background:#0a0a1a;}
+  .video-inner{position:relative;padding-bottom:56.25%;height:0;background:#0a0a1a;}.video-inner.form-mode{padding-bottom:0;height:600px;}
   .video-inner iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none;}
   .video-locked-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(10,10,26,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--white);text-align:center;padding:24px;}
   .video-locked-overlay svg{opacity:.6;}
@@ -213,7 +213,7 @@ const APPS_SCRIPT_URL = "https://script.google.com/a/macros/j2group.com.au/s/AKf
 //  Komodo embed: https://komododecks.com/recordings/VIDEO_ID/embed
 // ══════════════════════════════════════════════════
 const MODULES = [
-  { title:"Welcome to J2 Group",          desc:"An overview of who we are, what we do, and how the team works.",        embedUrl:"https://www.loom.com/embed/REPLACE_WITH_VIDEO_ID_1", source:"Loom" },
+  { title:"Welcome to J2 Group",          desc:"",        embedUrl:"https://forms.monday.com/forms/embed/791c84dec83e57e9788e36e0ec4ae64a?r=use1", source:"Monday.com Form" },
   { title:"Systems & Tools Overview",     desc:"Walkthrough of the key platforms you'll use day-to-day.",               embedUrl:"https://www.loom.com/embed/REPLACE_WITH_VIDEO_ID_2", source:"Loom" },
   { title:"Your Role & Responsibilities", desc:"What's expected of you in your first 30 days.",                         embedUrl:"https://komododecks.com/recordings/REPLACE_WITH_VIDEO_ID_3/embed", source:"Komodo" },
   { title:"Processes & Workflows",        desc:"How work gets done at J2 Group — step by step.",                        embedUrl:"https://www.loom.com/embed/REPLACE_WITH_VIDEO_ID_4", source:"Loom" },
@@ -368,14 +368,14 @@ function renderModule(i, done) {
   currentIndex = i;
   document.getElementById("banner-num").textContent = i+1;
   document.getElementById("banner-title").textContent = m.title;
-  document.getElementById("banner-desc").textContent = m.desc;
+  const descEl = document.getElementById("banner-desc"); descEl.textContent = m.desc; descEl.style.display = m.desc ? "block" : "none";
   const badge = document.getElementById("status-badge");
   badge.className = "status-badge "+(completed?"done":unlocked?"watching":"pending");
   badge.textContent = completed?"✓ Completed":unlocked?"In progress":"Locked";
   const frame = document.getElementById("video-frame"), overlay = document.getElementById("locked-overlay");
   const doneScreen = document.getElementById("done-screen"), actionBar = document.getElementById("action-bar");
   doneScreen.classList.remove("visible"); actionBar.style.display = "flex";
-  if (unlocked) { frame.src = m.embedUrl; overlay.style.display = "none"; }
+  if (unlocked) { frame.src = m.embedUrl; frame.style.border = m.source === "Monday.com Form" ? "0" : "none"; overlay.style.display = "none"; const vi = frame.parentElement; m.source === "Monday.com Form" ? vi.classList.add("form-mode") : vi.classList.remove("form-mode"); }
   else { frame.src=""; overlay.style.display="flex"; document.getElementById("locked-msg").textContent='Complete "'+(MODULES[i-1]?MODULES[i-1].title:"the previous module")+'" to unlock this video.'; }
   const btnComplete = document.getElementById("btn-complete"), btnNext = document.getElementById("btn-next");
   const hint = document.getElementById("action-hint"), isLast = i === MODULES.length-1;
